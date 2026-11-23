@@ -1,5 +1,5 @@
 // Caches the app so it opens offline. Bump VERSION when index.html changes.
-var VERSION = "aisle-v1";
+var VERSION = "aisle-v2";
 var FILES = ["./", "index.html", "manifest.webmanifest", "icon-180.png", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", function (e) {

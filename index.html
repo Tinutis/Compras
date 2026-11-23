@@ -338,6 +338,10 @@ body { overflow-x: hidden; touch-action: pan-y; }
 .cprog span.on { background: var(--btn); }
 .ctext { font-size: 26px; line-height: 1.35; font-weight: 500; margin: 0 0 22px; overflow-wrap: anywhere; text-wrap: pretty; }
 .ctools { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.prow2 { display: flex; gap: 8px; }
+.prow2 .btn { flex: 1; }
+.links { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.crow .hint { margin: 0; }
 .rthumb { flex: none; width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: var(--line); display: block; }
 .rhero { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: var(--line); }
 .photo { display: flex; flex-direction: column; gap: 10px; }
@@ -453,7 +457,7 @@ body { overflow-x: hidden; touch-action: pan-y; }
   var settings = null, rfilter = "all", confirmCat = null;
   var cooking = null, cookIdx = 0, showIngs = false, wakeOn = false, wake = null;
   var undoTimer = null, undoSnap = null;
-  var assetsApi = null;
+  var assetsApi = null, downloadsApi = null;
   function noop() {}
   /* ---- Standalone storage: photos live in IndexedDB on this phone ---- */
   var urlMap = {};
@@ -782,14 +786,151 @@ body { overflow-x: hidden; touch-action: pan-y; }
     }));
   }
 
+  /* ---- Backup and restore ---- */
+  var pendingImport = null, backupMsg = null, backupBusy = false;
+
+  function imgToDataUrl(id) {
+    return new Promise(function (resolve) {
+      var im = new Image();
+      im.onload = function () {
+        try {
+          var c = document.createElement("canvas");
+          c.width = im.naturalWidth; c.height = im.naturalHeight;
+          c.getContext("2d").drawImage(im, 0, 0);
+          resolve(c.toDataURL("image/jpeg", 0.85));
+        } catch (e) { resolve(""); }
+      };
+      im.onerror = function () { resolve(""); };
+      im.src = imgSrc(id);
+    });
+  }
+
+  function dataUrlToBlob(u) {
+    var i = u.indexOf(",");
+    var type = (u.slice(5, i).split(";")[0]) || "image/jpeg";
+    var bin = atob(u.slice(i + 1));
+    var a = new Uint8Array(bin.length);
+    for (var k = 0; k < bin.length; k++) a[k] = bin.charCodeAt(k);
+    return new Blob([a], { type: type });
+  }
+
+  function saveFile(name, text) {
+    if (downloadsApi) return downloadsApi.save({ filename: name, data: text });
+    var file = null;
+    try { file = new File([text], name, { type: "application/json" }); } catch (e) {}
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      return navigator.share({ files: [file], title: "Aisle backup" });
+    }
+    return new Promise(function (resolve) {
+      var url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+      var a = document.createElement("a");
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      resolve();
+    });
+  }
+
+  function exportBackup() {
+    var ids = {};
+    state.recipes.forEach(function (r) { if (r.img) ids[r.img] = 1; });
+    var images = {};
+    return Object.keys(ids).reduce(function (p, id) {
+      return p.then(function () { return imgToDataUrl(id).then(function (u) { if (u) images[id] = u; }); });
+    }, Promise.resolve()).then(function () {
+      var payload = { app: "aisle", version: 1, exportedAt: new Date().toISOString(), data: JSON.parse(JSON.stringify(state)), images: images };
+      var d = new Date();
+      var p2 = function (n) { return (n < 10 ? "0" : "") + n; };
+      var stamp = d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate());
+      return saveFile("aisle-backup-" + stamp + ".json", JSON.stringify(payload));
+    });
+  }
+
+  function importBackup(file) {
+    return file.text().then(function (txt) {
+      var j;
+      try { j = JSON.parse(txt); } catch (e) { throw new Error("That file isn't an Aisle backup."); }
+      if (!j || j.app !== "aisle" || !j.data) throw new Error("That file isn't an Aisle backup.");
+      var incoming = normalize(j.data);
+      var images = j.images || {};
+      var oldImgs = state.recipes.map(function (r) { return r.img; }).filter(Boolean);
+      return incoming.recipes.reduce(function (p, r) {
+        return p.then(function () {
+          var u = r.img ? images[r.img] : null;
+          if (!r.img) return;
+          if (u && assetsApi && typeof u === "string" && u.indexOf("data:image/") === 0) {
+            return assetsApi.upload(dataUrlToBlob(u), { type: "image/jpeg" }).then(function (res) { r.img = res.id; }, function () { r.img = ""; });
+          }
+          r.img = "";
+        });
+      }, Promise.resolve()).then(function () {
+        state = incoming;
+        oldImgs.forEach(dropAsset);
+        save();
+      });
+    });
+  }
+
+  function renderBackup(box) {
+    var busy = backupBusy;
+    var exp = h("button", { class: "btn", type: "button", onclick: function () {
+      backupBusy = true; backupMsg = null; render();
+      exportBackup().then(function () {
+        backupMsg = { ok: true, t: "Backup ready. Keep the file somewhere you can reach from your other device." };
+      }, function (e) {
+        if (e && (e.name === "AbortError" || e.code === "declined")) backupMsg = null;
+        else backupMsg = { ok: false, t: "Couldn't save the backup. Try again." };
+      }).then(function () { backupBusy = false; render(); });
+    } }, busy ? "Working…" : "Export backup");
+    if (busy) exp.disabled = true;
+    box.appendChild(h("div", { class: "crow" },
+      h("strong", null, "Save a backup"),
+      h("p", { class: "hint" }, "Saves your list, recipes, colours and photos to one file."),
+      exp));
+
+    var fileIn = h("input", { type: "file", accept: ".json,application/json", id: "backupFile", class: "vh", tabindex: "-1" });
+    fileIn.addEventListener("change", function () {
+      var f = fileIn.files && fileIn.files[0];
+      fileIn.value = "";
+      if (!f) return;
+      pendingImport = f; backupMsg = null; render();
+    });
+    var restoreKids = [
+      h("strong", null, "Restore from a backup"),
+      h("p", { class: "hint" }, "Replaces everything on this device with the contents of a backup file."),
+      fileIn
+    ];
+    if (pendingImport) {
+      restoreKids.push(h("p", { class: "err" }, "Replace everything here with " + pendingImport.name + "? This can't be undone."));
+      restoreKids.push(h("div", { class: "prow2" },
+        h("button", { class: "btn", type: "button", onclick: function () {
+          var f = pendingImport; pendingImport = null; backupBusy = true; render();
+          importBackup(f).then(function () {
+            backupMsg = { ok: true, t: "Restored. Your list and recipes now match the backup." };
+          }, function (e) {
+            backupMsg = { ok: false, t: (e && e.message) || "Couldn't read that file." };
+          }).then(function () { backupBusy = false; render(); });
+        } }, "Replace"),
+        h("button", { class: "btn alt", type: "button", onclick: function () { pendingImport = null; render(); } }, "Cancel")));
+    } else {
+      var pick = h("button", { class: "btn alt", type: "button", onclick: function () { fileIn.click(); } }, "Choose backup file");
+      if (busy) pick.disabled = true;
+      restoreKids.push(pick);
+    }
+    box.appendChild(h("div", { class: "crow" }, restoreKids));
+    if (backupMsg) box.appendChild(h("p", { class: backupMsg.ok ? "hint" : "err" }, backupMsg.t));
+  }
+
   function renderPanel() {
     var isA = settings === "aisles";
-    $("sub").textContent = isA ? "Pick a colour for each aisle." : "Rename, recolour, add or remove categories.";
+    var isB = settings === "backup";
+    $("sub").textContent = isB ? "Move your data to another device or keep a copy." : isA ? "Pick a colour for each aisle." : "Rename, recolour, add or remove categories.";
     var box = $("panel");
     box.textContent = "";
     box.appendChild(h("div", { class: "head" },
-      h("h2", { class: "ptitle" }, isA ? "Aisle colours" : "Recipe categories"),
-      h("button", { class: "btn", type: "button", onclick: function () { settings = null; confirmCat = null; render(); } }, "Done")));
+      h("h2", { class: "ptitle" }, isB ? "Backup and restore" : isA ? "Aisle colours" : "Recipe categories"),
+      h("button", { class: "btn", type: "button", onclick: function () { settings = null; confirmCat = null; pendingImport = null; backupMsg = null; render(); } }, "Done")));
+    if (isB) { renderBackup(box); return; }
     if (isA) {
       CATS.forEach(function (c) {
         box.appendChild(h("div", { class: "crow" },
@@ -1240,7 +1381,9 @@ body { overflow-x: hidden; touch-action: pan-y; }
           } }, "Clear cart")),
         h("div", { class: "rows" }, cart.map(row))));
     }
-    list.appendChild(h("button", { class: "linkbtn", type: "button", onclick: function () { settings = "aisles"; render(); } }, "Edit aisle colours"));
+    list.appendChild(h("div", { class: "links" },
+      h("button", { class: "linkbtn", type: "button", onclick: function () { settings = "aisles"; render(); } }, "Edit aisle colours"),
+      h("button", { class: "linkbtn", type: "button", onclick: function () { settings = "backup"; backupMsg = null; render(); } }, "Backup and restore")));
     renderChips();
   }
 
@@ -1346,6 +1489,7 @@ body { overflow-x: hidden; touch-action: pan-y; }
 
   function connect() {
     if (!window.claude || !window.claude.use) return;
+    window.claude.use("downloads").then(function (d) { downloadsApi = d; }).catch(noop);
     window.claude.use("assets").then(function (a) {
       if (!a) return;
       assetsApi = a;
