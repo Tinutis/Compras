@@ -1,0 +1,1391 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aisle</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Aisle">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f2e9d8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; } }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=DM+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow column like a paper list. Sections by supermarket aisle, a cart section at the bottom, and an add bar pinned to the bottom edge. */
+:root {
+  --bg: #f2e9d8;
+  --surface: #fbf6ea;
+  --ink: #3a2a1d;
+  --muted: #7b6652;
+  --line: #e1d4bc;
+  --accent: #8a5424;
+  --accent-ink: #fffaf0;
+  --accent-soft: #f5e3a8;
+  --btn: #e5b02e;
+  --btn-ink: #3a2a1d;
+  --done: #a39078;
+  --c-red: #b5473a;
+  --c-orange: #d4803a;
+  --c-amber: #d9a521;
+  --c-lime: #8a9a3b;
+  --c-green: #5e8c4f;
+  --c-teal: #4f8f8b;
+  --c-blue: #5b82a8;
+  --c-indigo: #7a74b0;
+  --c-purple: #8e5a86;
+  --c-pink: #c4687e;
+  --c-gray: #8f8272;
+  --bar-h: 170px;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1f1812;
+    --surface: #2a2118;
+    --ink: #f2e6d2;
+    --muted: #b9a68f;
+    --line: #3e3226;
+    --accent: #e6b73c;
+    --accent-ink: #1f1812;
+    --accent-soft: #4a3a1c;
+    --btn: #e5b02e;
+    --btn-ink: #2a1b10;
+    --done: #8a7a66;
+    --c-red: #e0806f;
+    --c-orange: #e8a261;
+    --c-amber: #e7c25a;
+    --c-lime: #b5c26a;
+    --c-green: #8db97c;
+    --c-teal: #7fbab5;
+    --c-blue: #8fb1d4;
+    --c-indigo: #a9a4d6;
+    --c-purple: #c79bc0;
+    --c-pink: #e39aac;
+    --c-gray: #b3a692;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1f1812;
+  --surface: #2a2118;
+  --ink: #f2e6d2;
+  --muted: #b9a68f;
+  --line: #3e3226;
+  --accent: #e6b73c;
+  --accent-ink: #1f1812;
+  --accent-soft: #4a3a1c;
+  --btn: #e5b02e;
+  --btn-ink: #2a1b10;
+  --done: #8a7a66;
+  --c-red: #e0806f;
+  --c-orange: #e8a261;
+  --c-amber: #e7c25a;
+  --c-lime: #b5c26a;
+  --c-green: #8db97c;
+  --c-teal: #7fbab5;
+  --c-blue: #8fb1d4;
+  --c-indigo: #a9a4d6;
+  --c-purple: #c79bc0;
+  --c-pink: #e39aac;
+  --c-gray: #b3a692;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { background: var(--bg); }
+body {
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.4;
+  padding-block: 20px calc(var(--bar-h) + 16px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-text-size-adjust: 100%;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.wrap { max-width: 520px; margin: 0 auto; min-width: 0; }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { font-family: var(--font-display); font-weight: 700; font-size: 15px; letter-spacing: 0.02em; color: var(--accent); }
+.sync { font-size: 12px; color: var(--muted); }
+
+h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 40px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin: 14px 0 4px;
+  text-wrap: balance;
+}
+.sub { color: var(--muted); font-size: 14px; margin: 0 0 18px; font-variant-numeric: tabular-nums; }
+
+.note {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; margin-bottom: 16px;
+  font-size: 14px;
+}
+.note button {
+  border: 0; background: transparent; color: var(--accent); font-weight: 600; padding: 6px 4px; white-space: nowrap;
+}
+
+.section { margin-bottom: 20px; }
+.section h2 {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin: 0 0 6px; padding: 0 2px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+.section h2 button {
+  border: 0; background: transparent; color: var(--accent); font-size: 13px; font-weight: 600;
+  letter-spacing: 0; text-transform: none; padding: 4px 2px;
+}
+.rows { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.row { display: flex; align-items: center; gap: 4px; min-height: 54px; padding-right: 8px; }
+.row + .row { border-top: 1px solid var(--line); }
+.main {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px;
+  border: 0; background: transparent; text-align: left; padding: 8px 4px 8px 14px; min-height: 54px;
+}
+.tick {
+  flex: none; width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid var(--cc, var(--done)); display: grid; place-items: center; color: transparent;
+}
+.tick svg { width: 14px; height: 14px; }
+.name { min-width: 0; overflow-wrap: anywhere; font-weight: 500; }
+.row.done .tick { background: color-mix(in srgb, var(--cc, var(--accent)) 25%, var(--surface)); border-color: var(--cc, var(--accent)); color: var(--ink); }
+.row.done .name { color: var(--done); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.qty { flex: none; display: flex; align-items: center; gap: 2px; font-variant-numeric: tabular-nums; }
+.qty button {
+  width: 40px; height: 40px; border-radius: 50%; border: 0; background: transparent;
+  font-size: 20px; line-height: 1; color: var(--muted);
+}
+.qty button:active { background: var(--accent-soft); }
+.qty .n { min-width: 22px; text-align: center; font-weight: 600; }
+.qtytag { flex: none; color: var(--done); font-size: 14px; font-variant-numeric: tabular-nums; padding-right: 6px; }
+
+.empty { text-align: center; color: var(--muted); padding: 36px 16px; }
+.empty strong { display: block; font-family: var(--font-display); font-size: 20px; color: var(--ink); margin-bottom: 4px; }
+
+.bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  background: var(--surface); border-top: 1px solid var(--line);
+  padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.bar-in { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex: none; border: 1px solid var(--line); background: var(--bg); border-radius: 999px;
+  padding: 10px 14px; font-size: 14px; white-space: nowrap;
+}
+.chip:active { background: var(--accent-soft); }
+.form { display: flex; gap: 8px; min-width: 0; }
+.form input[type="text"] {
+  flex: 1; min-width: 0; height: 48px; padding: 0 14px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--bg); font-size: 16px;
+}
+.form select {
+  flex: none; width: 104px; height: 48px; padding: 0 8px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--bg); font-size: 14px;
+}
+.form .add {
+  flex: none; height: 48px; padding: 0 18px; border-radius: 12px; border: 0;
+  background: var(--btn); color: var(--btn-ink); font-weight: 600;
+}
+.nm { display: flex; flex-direction: column; min-width: 0; }
+.src { font-size: 12px; color: var(--muted); font-weight: 400; }
+
+.tabs { display: flex; gap: 4px; padding: 4px; background: var(--line); border-radius: 12px; margin: 0 0 18px; }
+.tabs button {
+  flex: 1; height: 40px; border: 0; border-radius: 9px; background: transparent;
+  font-weight: 600; color: var(--muted);
+}
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14); }
+
+.btn {
+  height: 44px; padding: 0 16px; border-radius: 12px; border: 0;
+  background: var(--btn); color: var(--btn-ink); font-weight: 600;
+}
+.btn.alt { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+.btn[disabled] { opacity: 0.5; cursor: default; }
+.newbtn { width: 100%; margin-bottom: 14px; }
+
+.recipe { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 12px; overflow: hidden; }
+.rhead {
+  display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: transparent;
+  text-align: left; padding: 12px 14px; min-height: 64px;
+}
+.rtitle { flex: 1; min-width: 0; }
+.rtitle strong { display: block; font-family: var(--font-display); font-size: 18px; overflow-wrap: anywhere; }
+.rtitle span { font-size: 13px; color: var(--muted); }
+.chev { flex: none; width: 18px; height: 18px; color: var(--muted); }
+.chev svg { width: 18px; height: 18px; display: block; }
+.recipe.open .chev { transform: rotate(180deg); }
+.rbody { border-top: 1px solid var(--line); }
+.ing { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 6px 10px 6px 14px; }
+.ing + .ing { border-top: 1px solid var(--line); }
+.iname { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.iq { color: var(--muted); font-variant-numeric: tabular-nums; }
+.tag { font-size: 13px; color: var(--accent); font-weight: 600; padding: 0 4px; white-space: nowrap; }
+.mini {
+  border: 1px solid var(--line); background: var(--bg); border-radius: 999px;
+  padding: 9px 14px; font-size: 14px; font-weight: 600; color: var(--accent); white-space: nowrap;
+}
+.ractions { display: flex; gap: 8px; flex-wrap: wrap; padding: 12px 14px; border-top: 1px solid var(--line); }
+.ractions .btn:first-child { flex: 1 1 100%; }
+.ractions .btn.alt { flex: 1; }
+
+.editor {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;
+}
+.editor label { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.editor input, .editor textarea {
+  width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 12px;
+  padding: 12px 14px; font-size: 16px; font-family: var(--font-body);
+}
+.editor { position: relative; }
+.editor textarea { min-height: 120px; resize: none; overflow: hidden; line-height: 1.5; display: block; }
+html { overflow-x: hidden; overscroll-behavior-x: none; }
+body { overflow-x: hidden; touch-action: pan-y; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+.err { font-size: 14px; color: var(--ink); background: var(--accent-soft); border-radius: 10px; padding: 8px 12px; margin: 0; }
+.editor .acts { display: flex; gap: 8px; }
+.editor .acts .btn { flex: 1; }
+
+.dot { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--cc, var(--done)); margin-right: 8px; }
+.section h2 .lbl { display: flex; align-items: center; }
+.chip .dot { width: 8px; height: 8px; margin-right: 7px; }
+.ing .dot { margin-right: 0; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px 3px 8px;
+  background: color-mix(in srgb, var(--cc, var(--done)) 18%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--cc, var(--done)) 40%, var(--surface));
+}
+.pill .dot { margin: 0; width: 8px; height: 8px; }
+.rtitle .prow { display: block; margin-top: 6px; }
+.rtitle .pill { font-size: 12px; font-weight: 600; color: var(--ink); }
+
+.filters { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin-bottom: 14px; padding-bottom: 2px; }
+.filters::-webkit-scrollbar { display: none; }
+.fchip {
+  flex: none; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+  border: 1px solid var(--line); background: var(--surface); border-radius: 999px;
+  padding: 10px 14px; font-size: 14px; font-weight: 500;
+}
+.fchip .dot { margin: 0; }
+.fchip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.fchip.edit { color: var(--accent); border-style: dashed; background: transparent; font-weight: 600; }
+.linkbtn { border: 0; background: transparent; color: var(--accent); font-weight: 600; padding: 10px 2px; }
+
+.panel .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.panel .ptitle { font-family: var(--font-display); font-size: 22px; margin: 0; }
+.crow {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 12px 14px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 12px;
+}
+.nm1 { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.nm1 strong { flex: 1; min-width: 0; font-weight: 600; }
+.nm1 input {
+  flex: 1; min-width: 0; height: 44px; border: 1px solid var(--line); background: var(--bg);
+  border-radius: 10px; padding: 0 12px; font-size: 16px;
+}
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.sw {
+  width: 32px; height: 32px; border-radius: 50%; padding: 0; background: var(--cc);
+  border: 2px solid transparent; box-shadow: inset 0 0 0 2px var(--surface);
+}
+.sw[aria-pressed="true"] { border-color: var(--ink); }
+.crow .btn { align-self: flex-start; height: 38px; }
+
+.addarea { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.tabbar { display: flex; gap: 6px; }
+.tabbar button {
+  flex: 1; height: 48px; border: 0; border-radius: 12px; background: transparent; color: var(--muted);
+  font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.tabbar button[aria-selected="true"] { background: var(--accent-soft); color: var(--ink); }
+.tabbar svg { width: 20px; height: 20px; flex: none; }
+.cookctl { display: flex; gap: 10px; }
+.cookctl .btn { flex: 1; height: 56px; font-size: 17px; }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--bar-h) + 12px); z-index: 6;
+  display: flex; align-items: center; gap: 12px; max-width: calc(100% - 32px);
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 12px;
+  padding: 6px 6px 6px 16px; font-size: 14px; box-shadow: 0 6px 20px rgba(58, 42, 29, 0.22);
+}
+.toast button { border: 0; background: transparent; color: var(--accent); font-weight: 700; padding: 10px 12px; }
+.chead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.chead strong { display: block; font-family: var(--font-display); font-size: 20px; overflow-wrap: anywhere; }
+.cstep { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.cprog { display: flex; gap: 4px; margin-bottom: 20px; }
+.cprog span { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+.cprog span.on { background: var(--btn); }
+.ctext { font-size: 26px; line-height: 1.35; font-weight: 500; margin: 0 0 22px; overflow-wrap: anywhere; text-wrap: pretty; }
+.ctools { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.rthumb { flex: none; width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: var(--line); display: block; }
+.rhero { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: var(--line); }
+.photo { display: flex; flex-direction: column; gap: 10px; }
+.photo .pv { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 12px; background: var(--line); display: block; }
+.photo .prow2 { display: flex; gap: 8px; }
+.photo .prow2 .btn { flex: 1; }
+.vh { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden; }
+.topr { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.themebtn {
+  display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  border-radius: 999px; font-size: 13px; font-weight: 600;
+}
+.themebtn svg { width: 16px; height: 16px; flex: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .tick, .row .name { transition: background-color 0.15s, color 0.15s, border-color 0.15s; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="top">
+    <span class="brand">Aisle</span>
+    <span class="topr">
+      <span class="sync" id="sync" role="status"></span>
+      <button type="button" class="themebtn" id="themeBtn"></button>
+    </span>
+  </div>
+  <h1>Groceries</h1>
+  <p class="sub" id="sub"></p>
+  <div id="note"></div>
+  <div id="list"></div>
+  <div id="recipes" hidden></div>
+  <div id="panel" class="panel" hidden></div>
+  <div id="cook" hidden></div>
+</div>
+
+<div class="toast" id="toast" hidden role="status"><span id="toastMsg"></span><button type="button" id="toastUndo">Undo</button></div>
+
+<div class="bar" id="bar">
+  <div class="bar-in" id="barIn">
+    <div class="addarea" id="addArea">
+    <div class="chips" id="chips"></div>
+    <form class="form" id="addForm" autocomplete="off">
+      <input type="text" id="itemName" placeholder="Add an item" enterkeyhint="done" autocapitalize="sentences" aria-label="Item name" maxlength="80">
+      <select id="itemCat" aria-label="Aisle"></select>
+      <button class="add" type="submit">Add</button>
+    </form>
+    </div>
+    <div class="cookctl" id="cookArea" hidden></div>
+    <div class="tabbar" id="tabbar" role="tablist">
+      <button type="button" role="tab" id="tabList" aria-selected="true">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 5h9M7.5 10h9M7.5 15h9M3.5 5h.01M3.5 10h.01M3.5 15h.01"/></svg>
+        List
+      </button>
+      <button type="button" role="tab" id="tabRecipes" aria-selected="false">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H16v13H5.5A1.5 1.5 0 0 0 4 17.5v-13Z"/><path d="M4 17.5A1.5 1.5 0 0 0 5.5 19H16"/></svg>
+        Recipes
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var KEY = "aisle-v1";
+  var CATS = [
+    ["produce", "Produce"], ["bakery", "Bread & bakery"], ["dairy", "Dairy & eggs"],
+    ["meat", "Meat & fish"], ["pantry", "Pantry"], ["frozen", "Frozen"],
+    ["drinks", "Drinks"], ["household", "Household"], ["other", "Other"]
+  ];
+  var CAT_LABEL = {};
+  CATS.forEach(function (c) { CAT_LABEL[c[0]] = c[1]; });
+
+  var GUESS = [
+    ["frozen", ["frozen", "ice", "pizza", "fish finger"]],
+    ["household", ["toilet", "paper", "towel", "soap", "detergent", "dish", "sponge", "bin", "trash", "shampoo", "toothpaste", "laundry", "cleaner", "foil", "bag", "batter", "bulb", "tissue", "napkin"]],
+    ["drinks", ["water", "juice", "soda", "cola", "beer", "wine", "sparkling", "drink", "lemonade"]],
+    ["bakery", ["bread", "baguette", "bun", "roll", "croissant", "tortilla", "bagel", "cake", "toast"]],
+    ["dairy", ["milk", "egg", "cheese", "butter", "yogurt", "yoghurt", "cream", "kefir", "mozzarella", "parmesan"]],
+    ["meat", ["chicken", "beef", "pork", "ham", "bacon", "sausage", "fish", "salmon", "tuna", "shrimp", "steak", "turkey", "mince", "lamb"]],
+    ["produce", ["apple", "banana", "tomato", "onion", "garlic", "lettuce", "spinach", "carrot", "potato", "lemon", "lime", "avocado", "pepper", "cucumber", "orange", "fruit", "veg", "salad", "mushroom", "berr", "grape", "broccoli", "basil", "parsley", "ginger", "zucchini", "courgette", "pear", "melon"]],
+    ["pantry", ["pasta", "rice", "flour", "sugar", "oil", "coffee", "tea", "cereal", "oat", "sauce", "bean", "lentil", "chickpea", "salt", "spice", "honey", "jam", "nut", "chocolate", "snack", "biscuit", "cracker", "can", "vinegar", "stock", "noodle"]]
+  ].map(function (g) {
+    return [g[0], g[1].map(function (k) { return new RegExp("\\b" + k.replace(/ /g, "\\s")); })];
+  });
+
+  var DEFAULTS = [
+    ["Milk", "dairy"], ["Eggs", "dairy"], ["Bread", "bakery"], ["Bananas", "produce"],
+    ["Coffee", "pantry"], ["Tomatoes", "produce"], ["Butter", "dairy"], ["Onions", "produce"],
+    ["Pasta", "pantry"], ["Rice", "pantry"], ["Yogurt", "dairy"], ["Olive oil", "pantry"],
+    ["Chicken", "meat"], ["Apples", "produce"], ["Toilet paper", "household"]
+  ];
+
+  var COLORS = ["red", "orange", "amber", "lime", "green", "teal", "blue", "indigo", "purple", "pink", "gray"];
+  var DEF_AISLE = { produce: "green", bakery: "amber", dairy: "blue", meat: "red", pantry: "orange", frozen: "teal", drinks: "indigo", household: "purple", other: "gray" };
+  function defRcats() {
+    return [
+      { id: "veg", name: "Vegetarian", color: "green" },
+      { id: "meat", name: "Meat", color: "red" },
+      { id: "fish", name: "Fish", color: "blue" },
+      { id: "soup", name: "Soups", color: "amber" },
+      { id: "pasta", name: "Pasta", color: "orange" },
+      { id: "dessert", name: "Desserts", color: "pink" }
+    ];
+  }
+
+  var state = null;
+  var ref = null, dirty = false, writing = false, timer = null, autoCat = true;
+  var tab = "list", editing = null, open = {}, confirmDel = null;
+  var settings = null, rfilter = "all", confirmCat = null;
+  var cooking = null, cookIdx = 0, showIngs = false, wakeOn = false, wake = null;
+  var undoTimer = null, undoSnap = null;
+  var assetsApi = null;
+  function noop() {}
+  /* ---- Standalone storage: photos live in IndexedDB on this phone ---- */
+  var urlMap = {};
+  var idb = null;
+  function openIdb() {
+    return new Promise(function (res) {
+      try {
+        var rq = indexedDB.open("aisle-photos", 1);
+        rq.onupgradeneeded = function () { rq.result.createObjectStore("img"); };
+        rq.onsuccess = function () { idb = rq.result; res(); };
+        rq.onerror = function () { res(); };
+      } catch (e) { res(); }
+    });
+  }
+  function loadImages() {
+    return openIdb().then(function () {
+      if (!idb) return;
+      return new Promise(function (res) {
+        try {
+          var tx = idb.transaction("img", "readonly");
+          var st = tx.objectStore("img");
+          var cur = st.openCursor();
+          cur.onsuccess = function () {
+            var c = cur.result;
+            if (c) { urlMap[c.key] = URL.createObjectURL(c.value); c.continue(); } else res();
+          };
+          cur.onerror = function () { res(); };
+        } catch (e) { res(); }
+      });
+    });
+  }
+  function hex32() {
+    var a = new Uint8Array(16);
+    crypto.getRandomValues(a);
+    return Array.prototype.map.call(a, function (b) { return ("0" + b.toString(16)).slice(-2); }).join("");
+  }
+  function localAssets() {
+    if (!idb) return null;
+    return {
+      upload: function (blob) {
+        return new Promise(function (res, rej) {
+          var id = hex32();
+          try {
+            var tx = idb.transaction("img", "readwrite");
+            tx.objectStore("img").put(blob, id);
+            tx.oncomplete = function () { urlMap[id] = URL.createObjectURL(blob); res({ id: id }); };
+            tx.onerror = function () { rej({ code: "quota_or_state" }); };
+            tx.onabort = function () { rej({ code: "quota_or_state" }); };
+          } catch (e) { rej({ code: "upstream_error" }); }
+        });
+      },
+      delete: function (id) {
+        return new Promise(function (res) {
+          try {
+            var tx = idb.transaction("img", "readwrite");
+            tx.objectStore("img").delete(id);
+            tx.oncomplete = function () {
+              if (urlMap[id]) { URL.revokeObjectURL(urlMap[id]); delete urlMap[id]; }
+              res({ deleted: true });
+            };
+            tx.onerror = function () { res({ deleted: false }); };
+          } catch (e) { res({ deleted: false }); }
+        });
+      }
+    };
+  }
+
+  function imgSrc(id) { return urlMap[id] || ""; }
+  function dropAsset(id) { if (id && assetsApi) assetsApi.delete(id).catch(noop); }
+  function shrink(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var im = new Image();
+      im.onload = function () {
+        var s = Math.min(1, 1200 / Math.max(im.naturalWidth, im.naturalHeight));
+        var c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(im.naturalWidth * s));
+        c.height = Math.max(1, Math.round(im.naturalHeight * s));
+        c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+        c.toBlob(function (b) {
+          URL.revokeObjectURL(url);
+          if (b) resolve(b); else reject(new Error("encode"));
+        }, "image/jpeg", 0.82);
+      };
+      im.onerror = function () { URL.revokeObjectURL(url); reject(new Error("decode")); };
+      im.src = url;
+    });
+  }
+
+  function uid() { return Math.random().toString(36).slice(2, 9) + Date.now().toString(36); }
+  function $(id) { return document.getElementById(id); }
+
+  function h(tag, props) {
+    var el = document.createElement(tag);
+    if (props) {
+      Object.keys(props).forEach(function (k) {
+        var v = props[k];
+        if (k === "class") el.className = v;
+        else if (k === "cc") el.style.setProperty("--cc", "var(--c-" + v + ")");
+        else if (k.slice(0, 2) === "on") el.addEventListener(k.slice(2), v);
+        else el.setAttribute(k, v);
+      });
+    }
+    function add(c) {
+      if (c == null) return;
+      if (Array.isArray(c)) { c.forEach(add); return; }
+      el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+    }
+    for (var i = 2; i < arguments.length; i++) add(arguments[i]);
+    return el;
+  }
+
+  function exampleRecipe() {
+    return {
+      id: uid(), name: "Tomato pasta", rc: "veg", ex: true,
+      steps: [
+        "Boil salted water and cook the pasta until just tender.",
+        "Fry the garlic in olive oil, add the chopped tomatoes and simmer for 10 minutes.",
+        "Toss the drained pasta in the sauce.",
+        "Serve with grated parmesan."
+      ],
+      ings: [
+        { name: "Pasta", qty: 1, cat: "pantry" },
+        { name: "Tomatoes", qty: 4, cat: "produce" },
+        { name: "Garlic", qty: 2, cat: "produce" },
+        { name: "Olive oil", qty: 1, cat: "pantry" },
+        { name: "Parmesan", qty: 1, cat: "dairy" }
+      ]
+    };
+  }
+
+  function seed() {
+    return {
+      updatedAt: 0,
+      known: [],
+      colors: JSON.parse(JSON.stringify(DEF_AISLE)),
+      rcats: defRcats(),
+      recipes: [exampleRecipe()],
+      items: [
+        { id: uid(), name: "Milk", qty: 2, cat: "dairy", done: false, ex: true },
+        { id: uid(), name: "Eggs", qty: 1, cat: "dairy", done: false, ex: true },
+        { id: uid(), name: "Tomatoes", qty: 4, cat: "produce", done: false, ex: true },
+        { id: uid(), name: "Bread", qty: 1, cat: "bakery", done: false, ex: true },
+        { id: uid(), name: "Coffee", qty: 1, cat: "pantry", done: true, ex: true }
+      ]
+    };
+  }
+
+  function normalize(d) {
+    var items = Array.isArray(d && d.items) ? d.items : [];
+    var known = Array.isArray(d && d.known) ? d.known : [];
+    var colors = {};
+    CATS.forEach(function (c) {
+      var v = d && d.colors && d.colors[c[0]];
+      colors[c[0]] = COLORS.indexOf(v) !== -1 ? v : DEF_AISLE[c[0]];
+    });
+    var rcats = Array.isArray(d && d.rcats)
+      ? d.rcats.filter(function (c) { return c && c.id && c.name; }).map(function (c) {
+          return { id: String(c.id), name: String(c.name), color: COLORS.indexOf(c.color) !== -1 ? c.color : "gray" };
+        })
+      : defRcats();
+    var recipes = Array.isArray(d && d.recipes)
+      ? d.recipes.filter(function (r) { return r && r.name; }).map(function (r) {
+          var o = {
+            id: r.id || uid(),
+            name: String(r.name),
+            rc: rcats.some(function (c) { return c.id === r.rc; }) ? r.rc : "",
+            steps: (Array.isArray(r.steps) ? r.steps : []).map(String).filter(Boolean),
+            img: typeof r.img === "string" && /^[0-9a-f]{32}$/.test(r.img) ? r.img : "",
+            ings: (Array.isArray(r.ings) ? r.ings : []).filter(function (i) { return i && i.name; }).map(function (i) {
+              return { name: String(i.name), qty: Math.max(1, i.qty | 0 || 1), cat: CAT_LABEL[i.cat] ? i.cat : "other" };
+            })
+          };
+          if (r.ex) o.ex = true;
+          if (r.ex && !o.steps.length) o.steps = exampleRecipe().steps;
+          return o;
+        })
+      : [exampleRecipe()];
+    return {
+      updatedAt: (d && d.updatedAt) || 0,
+      recipes: recipes,
+      colors: colors,
+      rcats: rcats,
+      items: items.filter(function (i) { return i && i.name; }).map(function (i) {
+        var o = { id: i.id || uid(), name: String(i.name), qty: Math.max(1, i.qty | 0 || 1), cat: CAT_LABEL[i.cat] ? i.cat : "other", done: !!i.done };
+        if (i.ex) o.ex = true;
+        if (i.src) o.src = String(i.src);
+        return o;
+      }),
+      known: known.filter(function (k) { return k && k.n; }).map(function (k) {
+        return { n: String(k.n), c: CAT_LABEL[k.c] ? k.c : "other", k: k.k | 0 || 1 };
+      })
+    };
+  }
+
+  function loadLocal() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) return normalize(JSON.parse(raw));
+    } catch (e) {}
+    return null;
+  }
+  function saveLocal() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  function setSync(t) { $("sync").textContent = t; }
+
+  function save() {
+    state.updatedAt = Date.now();
+    saveLocal();
+    if (!ref) return;
+    dirty = true;
+    setSync("Saving…");
+    clearTimeout(timer);
+    timer = setTimeout(flush, 350);
+  }
+
+  function flush() {
+    if (writing || !dirty || !ref) return;
+    writing = true;
+    dirty = false;
+    ref.set(JSON.parse(JSON.stringify(state))).then(function () {
+      writing = false;
+      if (dirty) timer = setTimeout(flush, 100); else setSync("Synced");
+    }, function () {
+      writing = false;
+      setSync("Saved on this phone");
+    });
+  }
+
+  function guessCat(name) {
+    var n = name.trim().toLowerCase();
+    if (!n) return "other";
+    for (var i = 0; i < state.known.length; i++) {
+      if (state.known[i].n.toLowerCase() === n) return state.known[i].c;
+    }
+    for (var d = 0; d < DEFAULTS.length; d++) {
+      if (DEFAULTS[d][0].toLowerCase() === n) return DEFAULTS[d][1];
+    }
+    for (var g = 0; g < GUESS.length; g++) {
+      var res = GUESS[g][1];
+      for (var r = 0; r < res.length; r++) if (res[r].test(n)) return GUESS[g][0];
+    }
+    return "other";
+  }
+
+  function addItem(name, cat) {
+    name = name.trim().replace(/\s+/g, " ");
+    if (!name) return;
+    var low = name.toLowerCase();
+    var existing = state.items.filter(function (i) { return i.name.toLowerCase() === low; })[0];
+    if (existing) {
+      if (existing.done) { existing.done = false; existing.qty = 1; }
+      else existing.qty += 1;
+      delete existing.ex;
+    } else {
+      state.items.push({ id: uid(), name: name, qty: 1, cat: cat, done: false });
+    }
+    var k = state.known.filter(function (x) { return x.n.toLowerCase() === low; })[0];
+    if (k) { k.k += 1; k.c = existing ? existing.cat : cat; }
+    else {
+      state.known.push({ n: name, c: cat, k: 1 });
+      if (state.known.length > 200) {
+        state.known.sort(function (a, b) { return b.k - a.k; });
+        state.known.length = 200;
+      }
+    }
+    save();
+    render();
+  }
+
+  function find(id) { return state.items.filter(function (i) { return i.id === id; })[0]; }
+  function toggle(id) { var i = find(id); if (i) { i.done = !i.done; save(); render(); } }
+  function changeQty(id, delta) {
+    var i = find(id);
+    if (!i) return;
+    var before = snapshot();
+    i.qty += delta;
+    var removed = i.qty < 1;
+    if (removed) state.items = state.items.filter(function (x) { return x.id !== id; });
+    save();
+    render();
+    if (removed) showUndo("Removed " + i.name, before);
+  }
+
+  /* ---- Recipes ---- */
+  function status(name) {
+    var low = name.toLowerCase();
+    var it = state.items.filter(function (i) { return i.name.toLowerCase() === low; })[0];
+    return it ? (it.done ? "cart" : "list") : null;
+  }
+
+  function addRecipe(r, only) {
+    var added = 0;
+    r.ings.forEach(function (ing, idx) {
+      if (only != null && only !== idx) return;
+      if (status(ing.name)) return;
+      state.items.push({ id: uid(), name: ing.name, qty: ing.qty, cat: ing.cat, done: false, src: r.name });
+      added++;
+    });
+    if (added) save();
+    render();
+  }
+
+  function parseIngs(text) {
+    return text.split("\n").map(function (l) { return l.trim(); }).filter(Boolean).map(function (l) {
+      var m = l.match(/^(\d{1,3})\s*(?:x|×)?\s+(.+)$/i);
+      var qty = 1, name = l;
+      if (m) { qty = parseInt(m[1], 10) || 1; name = m[2]; }
+      name = name.trim().replace(/\s+/g, " ");
+      return { name: name, qty: qty, cat: guessCat(name) };
+    }).filter(function (i) { return i.name; });
+  }
+
+  function ingsText(r) {
+    return r.ings.map(function (i) { return (i.qty > 1 ? i.qty + " " : "") + i.name; }).join("\n");
+  }
+
+  function colorOf(aisle) { return (state.colors && state.colors[aisle]) || "gray"; }
+  function rcat(id) { return state.rcats.filter(function (c) { return c.id === id; })[0] || null; }
+
+  function swatches(cur, onPick) {
+    return h("div", { class: "swatches", role: "group", "aria-label": "Colour" }, COLORS.map(function (col) {
+      return h("button", { class: "sw", type: "button", cc: col, "aria-label": col, "aria-pressed": col === cur ? "true" : "false", onclick: function () { onPick(col); } });
+    }));
+  }
+
+  function renderPanel() {
+    var isA = settings === "aisles";
+    $("sub").textContent = isA ? "Pick a colour for each aisle." : "Rename, recolour, add or remove categories.";
+    var box = $("panel");
+    box.textContent = "";
+    box.appendChild(h("div", { class: "head" },
+      h("h2", { class: "ptitle" }, isA ? "Aisle colours" : "Recipe categories"),
+      h("button", { class: "btn", type: "button", onclick: function () { settings = null; confirmCat = null; render(); } }, "Done")));
+    if (isA) {
+      CATS.forEach(function (c) {
+        box.appendChild(h("div", { class: "crow" },
+          h("div", { class: "nm1" }, h("span", { class: "dot", cc: colorOf(c[0]) }), h("strong", null, c[1])),
+          swatches(colorOf(c[0]), function (col) { state.colors[c[0]] = col; save(); render(); })));
+      });
+      box.appendChild(h("button", { class: "linkbtn", type: "button", onclick: function () {
+        CATS.forEach(function (c) { state.colors[c[0]] = DEF_AISLE[c[0]]; });
+        save(); render();
+      } }, "Reset to default colours"));
+      return;
+    }
+    state.rcats.forEach(function (c) {
+      var inp = h("input", { type: "text", maxlength: "30", "aria-label": "Category name", autocomplete: "off" });
+      inp.value = c.name;
+      inp.addEventListener("input", function () {
+        var v = inp.value.trim();
+        if (v) { c.name = v; save(); }
+      });
+      var del = h("button", { class: "btn alt", type: "button", onclick: function () {
+        if (confirmCat === c.id) {
+          state.rcats = state.rcats.filter(function (x) { return x.id !== c.id; });
+          state.recipes.forEach(function (r) { if (r.rc === c.id) r.rc = ""; });
+          if (rfilter === c.id) rfilter = "all";
+          confirmCat = null;
+          save();
+        } else {
+          confirmCat = c.id;
+        }
+        render();
+      } }, confirmCat === c.id ? "Tap to delete" : "Delete");
+      box.appendChild(h("div", { class: "crow" },
+        h("div", { class: "nm1" }, h("span", { class: "dot", cc: c.color }), inp),
+        swatches(c.color, function (col) { c.color = col; save(); render(); }),
+        del));
+    });
+    box.appendChild(h("button", { class: "btn alt", type: "button", onclick: function () {
+      state.rcats.push({ id: uid(), name: "New category", color: "blue" });
+      save();
+      render();
+      setTimeout(function () {
+        var inputs = $("panel").querySelectorAll(".nm1 input");
+        var last = inputs[inputs.length - 1];
+        if (last) { last.focus(); last.select(); }
+      }, 0);
+    } }, "Add category"));
+  }
+
+  /* ---- Undo ---- */
+  function snapshot() { return JSON.stringify({ items: state.items, recipes: state.recipes }); }
+  function showUndo(msg, snap) {
+    undoSnap = snap;
+    $("toastMsg").textContent = msg;
+    $("toast").hidden = false;
+    clearTimeout(undoTimer);
+    undoTimer = setTimeout(function () { $("toast").hidden = true; undoSnap = null; }, 6000);
+  }
+  function doUndo() {
+    if (!undoSnap) return;
+    var d = JSON.parse(undoSnap);
+    state.items = d.items;
+    state.recipes = d.recipes;
+    undoSnap = null;
+    clearTimeout(undoTimer);
+    $("toast").hidden = true;
+    save();
+    render();
+  }
+
+  /* ---- Cooking mode ---- */
+  var COOKKEY = "aisle-cook-v1";
+  function cookSaved(id) {
+    try { return (JSON.parse(localStorage.getItem(COOKKEY) || "{}")[id] | 0) || 0; } catch (e) { return 0; }
+  }
+  function cookSave(id, i) {
+    try {
+      var m = JSON.parse(localStorage.getItem(COOKKEY) || "{}");
+      m[id] = i;
+      localStorage.setItem(COOKKEY, JSON.stringify(m));
+    } catch (e) {}
+  }
+  function setWake(on) {
+    if (!on) {
+      if (wake) { try { wake.release(); } catch (e) {} wake = null; }
+      return;
+    }
+    if (!navigator.wakeLock) { wakeOn = false; return; }
+    try {
+      navigator.wakeLock.request("screen").then(function (l) {
+        wake = l;
+        l.addEventListener("release", function () { if (wake === l) wake = null; });
+      }).catch(function () { wakeOn = false; render(); });
+    } catch (e) { wakeOn = false; }
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (wakeOn && !wake && document.visibilityState === "visible") setWake(true);
+  });
+  function startCook(r) {
+    cooking = r.id;
+    cookIdx = Math.max(0, Math.min(cookSaved(r.id), r.steps.length - 1));
+    showIngs = false;
+    render();
+    window.scrollTo(0, 0);
+  }
+  function exitCook() {
+    cooking = null;
+    wakeOn = false;
+    setWake(false);
+    render();
+  }
+  function renderCook() {
+    var r = state.recipes.filter(function (x) { return x.id === cooking; })[0];
+    if (!r || !r.steps || !r.steps.length) { cooking = null; render(); return; }
+    var n = r.steps.length;
+    cookIdx = Math.max(0, Math.min(cookIdx, n - 1));
+    $("sub").textContent = "";
+    var box = $("cook");
+    box.textContent = "";
+    box.appendChild(h("div", { class: "chead" },
+      h("div", null, h("strong", null, r.name), h("span", { class: "cstep" }, "Step " + (cookIdx + 1) + " of " + n)),
+      h("button", { class: "btn alt", type: "button", onclick: exitCook }, "Close")));
+    var prog = h("div", { class: "cprog", "aria-hidden": "true" });
+    r.steps.forEach(function (_, i) { prog.appendChild(h("span", { class: i <= cookIdx ? "on" : "" })); });
+    box.appendChild(prog);
+    box.appendChild(h("p", { class: "ctext" }, r.steps[cookIdx]));
+    box.appendChild(h("div", { class: "ctools" },
+      h("button", { class: "fchip", type: "button", "aria-pressed": wakeOn ? "true" : "false", onclick: function () {
+        wakeOn = !wakeOn;
+        setWake(wakeOn);
+        render();
+      } }, "Keep screen on"),
+      h("button", { class: "fchip", type: "button", "aria-pressed": showIngs ? "true" : "false", onclick: function () {
+        showIngs = !showIngs;
+        render();
+      } }, "Ingredients")));
+    if (showIngs) {
+      var rows = h("div", { class: "rows" });
+      r.ings.forEach(function (ing) {
+        rows.appendChild(h("div", { class: "ing" },
+          h("span", { class: "dot", cc: colorOf(ing.cat) }),
+          h("span", { class: "iname" }, ing.name),
+          ing.qty > 1 ? h("span", { class: "iq" }, "×" + ing.qty) : null));
+      });
+      box.appendChild(rows);
+    }
+    var ctl = $("cookArea");
+    ctl.textContent = "";
+    var back = h("button", { class: "btn alt", type: "button", onclick: function () {
+      cookIdx--;
+      cookSave(r.id, cookIdx);
+      render();
+    } }, "Back");
+    if (cookIdx === 0) back.disabled = true;
+    var last = cookIdx === n - 1;
+    var next = h("button", { class: "btn", type: "button", onclick: function () {
+      if (last) { cookSave(r.id, 0); exitCook(); return; }
+      cookIdx++;
+      cookSave(r.id, cookIdx);
+      render();
+    } }, last ? "Finish" : "Next step");
+    ctl.appendChild(back);
+    ctl.appendChild(next);
+  }
+
+  var CHEV ='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6"/></svg>';
+
+  function editorEl() {
+    var nameIn = h("input", { type: "text", id: "rName", maxlength: "80", placeholder: "Tomato pasta", autocapitalize: "sentences", autocomplete: "off" });
+    nameIn.value = editing.name;
+    nameIn.addEventListener("input", function () { editing.name = nameIn.value; });
+    var catSel = h("select", { id: "rCat" },
+      h("option", { value: "" }, "No category"),
+      state.rcats.map(function (c) { return h("option", { value: c.id }, c.name); }));
+    catSel.value = editing.rc || "";
+    catSel.addEventListener("change", function () { editing.rc = catSel.value; });
+    var txt = h("textarea", { id: "rIngs", placeholder: "4 tomatoes\n2 garlic cloves\nOlive oil", autocapitalize: "sentences" });
+    txt.value = editing.text;
+    txt.addEventListener("input", function () { editing.text = txt.value; });
+    var stepsIn = h("textarea", { id: "rSteps", placeholder: "Boil the pasta\nFry the garlic\nToss and serve", autocapitalize: "sentences" });
+    stepsIn.value = editing.steps || "";
+    stepsIn.addEventListener("input", function () { editing.steps = stepsIn.value; });
+    var ed = editing;
+    var photoBox = h("div", { class: "photo" });
+    var fileIn = h("input", { type: "file", accept: "image/*", id: "rPhotoFile", class: "vh", tabindex: "-1" });
+    function drawPhoto() {
+      photoBox.textContent = "";
+      if (ed.img) {
+        var pv = h("img", { class: "pv", alt: "Recipe photo", src: imgSrc(ed.img) });
+        pv.addEventListener("error", function () { pv.style.display = "none"; });
+        photoBox.appendChild(pv);
+      }
+      if (ed.perr) photoBox.appendChild(h("p", { class: "err" }, ed.perr));
+      var pick = h("button", { class: "btn alt", type: "button", onclick: function () { fileIn.click(); } },
+        ed.busy ? "Uploading…" : ed.img ? "Change photo" : "Add photo");
+      if (ed.busy) pick.disabled = true;
+      var row2 = h("div", { class: "prow2" }, pick);
+      if (ed.img && !ed.busy) {
+        row2.appendChild(h("button", { class: "btn alt", type: "button", onclick: function () {
+          if (ed.img !== ed.origImg) dropAsset(ed.img);
+          ed.img = "";
+          drawPhoto();
+        } }, "Remove"));
+      }
+      photoBox.appendChild(row2);
+    }
+    fileIn.addEventListener("change", function () {
+      var f = fileIn.files && fileIn.files[0];
+      fileIn.value = "";
+      if (!f || !assetsApi) return;
+      ed.busy = true;
+      ed.perr = "";
+      drawPhoto();
+      shrink(f).then(function (blob) {
+        return assetsApi.upload(blob, { type: "image/jpeg" });
+      }).then(function (res) {
+        if (editing !== ed) { dropAsset(res.id); return; }
+        if (ed.img && ed.img !== ed.origImg) dropAsset(ed.img);
+        ed.img = res.id;
+        ed.busy = false;
+        drawPhoto();
+      }).catch(function (e) {
+        ed.busy = false;
+        ed.perr = e && e.code === "quota_or_state" ? "This page has no photo storage left." : "Couldn't add that photo. Try a different one.";
+        if (editing === ed) drawPhoto();
+      });
+    });
+    drawPhoto();
+    function autosize(t) { t.style.height = "auto"; t.style.height = (t.scrollHeight + 2) + "px"; }
+    txt.addEventListener("input", function () { autosize(txt); });
+    stepsIn.addEventListener("input", function () { autosize(stepsIn); });
+    setTimeout(function () { autosize(txt); autosize(stepsIn); }, 0);
+    var err = h("p", { class: "err", hidden: "" });
+    function fail(msg) { err.textContent = msg; err.hidden = false; }
+    var save1 = h("button", { class: "btn", type: "button", onclick: function () {
+      var nm = nameIn.value.trim().replace(/\s+/g, " ");
+      var ings = parseIngs(txt.value);
+      var rcOk = rcat(editing.rc) ? editing.rc : "";
+      var steps = stepsIn.value.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
+      if (!nm) return fail("Give the recipe a name.");
+      if (!ings.length) return fail("Add at least one ingredient.");
+      if (ed.busy) return fail("Wait for the photo to finish uploading.");
+      if (ed.origImg && ed.origImg !== ed.img) dropAsset(ed.origImg);
+      if (editing.id) {
+        var r = state.recipes.filter(function (x) { return x.id === editing.id; })[0];
+        if (r) { r.name = nm; r.ings = ings; r.rc = rcOk; r.steps = steps; r.img = ed.img || ""; delete r.ex; }
+      } else {
+        var nr = { id: uid(), name: nm, rc: rcOk, steps: steps, ings: ings, img: ed.img || "" };
+        state.recipes.unshift(nr);
+        open[nr.id] = true;
+      }
+      editing = null;
+      save();
+      render();
+    } }, "Save recipe");
+    var cancel = h("button", { class: "btn alt", type: "button", onclick: function () {
+      if (ed.img && ed.img !== ed.origImg) dropAsset(ed.img);
+      editing = null;
+      render();
+    } }, "Cancel");
+    return h("div", { class: "editor" },
+      h("label", { for: "rName" }, "Recipe name"), nameIn,
+      assetsApi ? h("label", { for: "rPhotoFile" }, "Photo") : null,
+      assetsApi ? photoBox : null,
+      assetsApi ? fileIn : null,
+      h("label", { for: "rCat" }, "Category"), catSel,
+      h("label", { for: "rIngs" }, "Ingredients"), txt,
+      h("p", { class: "hint" }, "One ingredient per line. A number at the start sets how many to buy, like 4 tomatoes. Aisles are filled in for you."),
+      h("label", { for: "rSteps" }, "Method (optional)"), stepsIn,
+      h("p", { class: "hint" }, "One step per line. Start cooking then shows one step at a time in large text."),
+      err,
+      h("div", { class: "acts" }, save1, cancel));
+  }
+
+  function recipeEl(r) {
+    var isOpen = !!open[r.id];
+    var missing = r.ings.filter(function (i) { return !status(i.name); }).length;
+    var onN = r.ings.filter(function (i) { return status(i.name) === "list"; }).length;
+    var chev = h("span", { class: "chev" });
+    chev.innerHTML = CHEV;
+    var meta = r.ings.length + (r.ings.length === 1 ? " ingredient" : " ingredients") + (onN ? " · " + onN + " on your list" : "");
+    var head = h("button", { class: "rhead", type: "button", "aria-expanded": isOpen ? "true" : "false", onclick: function () {
+      open[r.id] = !open[r.id];
+      confirmDel = null;
+      render();
+    } }, r.img ? h("img", { class: "rthumb", alt: "", src: imgSrc(r.img), onerror: function (e) { e.target.style.display = "none"; } }) : null,
+    h("span", { class: "rtitle" }, h("strong", null, r.name), h("span", null, meta),
+      rcat(r.rc) ? h("span", { class: "prow" }, h("span", { class: "pill", cc: rcat(r.rc).color }, h("span", { class: "dot" }), rcat(r.rc).name)) : null), chev);
+    var el = h("div", { class: "recipe" + (isOpen ? " open" : "") }, head);
+    if (!isOpen) return el;
+
+    var body = h("div", { class: "rbody" });
+    if (r.img) body.appendChild(h("img", { class: "rhero", alt: r.name, src: imgSrc(r.img), onerror: function (e) { e.target.style.display = "none"; } }));
+    r.ings.forEach(function (ing, idx) {
+      var st = status(ing.name);
+      var right;
+      if (st === "list") right = h("span", { class: "tag" }, "On list");
+      else if (st === "cart") right = h("span", { class: "tag" }, "In cart");
+      else right = h("button", { class: "mini", type: "button", "aria-label": "Add " + ing.name + " to list", onclick: function () { addRecipe(r, idx); } }, "+ Add");
+      body.appendChild(h("div", { class: "ing" },
+        h("span", { class: "dot", cc: colorOf(ing.cat) }),
+        h("span", { class: "iname" }, ing.name),
+        ing.qty > 1 ? h("span", { class: "iq" }, "×" + ing.qty) : null,
+        right));
+    });
+    el.appendChild(body);
+
+    var addAll = h("button", { class: "btn", type: "button", onclick: function () { addRecipe(r, null); } },
+      missing ? "Add " + missing + " to list" : "Nothing left to add");
+    if (!missing) addAll.disabled = true;
+    var edit = h("button", { class: "btn alt", type: "button", onclick: function () {
+      editing = { id: r.id, name: r.name, text: ingsText(r), rc: r.rc || "", steps: (r.steps || []).join("\n"), img: r.img || "", origImg: r.img || "" };
+      render();
+    } }, "Edit");
+    var del = h("button", { class: "btn alt", type: "button", onclick: function () {
+      if (confirmDel === r.id) {
+        dropAsset(r.img);
+        state.recipes = state.recipes.filter(function (x) { return x.id !== r.id; });
+        confirmDel = null;
+        save();
+      } else {
+        confirmDel = r.id;
+      }
+      render();
+    } }, confirmDel === r.id ? "Tap to delete" : "Delete");
+    var actions = h("div", { class: "ractions" }, addAll);
+    if (r.steps && r.steps.length) {
+      actions.appendChild(h("button", { class: "btn alt", type: "button", onclick: function () { startCook(r); } }, "Cook"));
+    }
+    actions.appendChild(edit);
+    actions.appendChild(del);
+    el.appendChild(actions);
+    return el;
+  }
+
+  function renderRecipes() {
+    if (rfilter !== "all" && !rcat(rfilter)) rfilter = "all";
+    var n = state.recipes.length;
+    $("sub").textContent = n + (n === 1 ? " recipe" : " recipes");
+    var box = $("recipes");
+    box.textContent = "";
+    if (editing) {
+      box.appendChild(editorEl());
+      if (!editing.name) setTimeout(function () { var f = $("rName"); if (f && !editing.name) f.focus(); }, 0);
+      return;
+    }
+    box.appendChild(h("button", { class: "btn newbtn", type: "button", onclick: function () {
+      editing = { id: null, name: "", text: "", rc: rfilter !== "all" ? rfilter : "", steps: "", img: "", origImg: "" };
+      render();
+    } }, "New recipe"));
+    var fr = h("div", { class: "filters" });
+    function fchip(label, id, color) {
+      return h("button", { class: "fchip", type: "button", "aria-pressed": rfilter === id ? "true" : "false", onclick: function () { rfilter = id; render(); } },
+        color ? h("span", { class: "dot", cc: color }) : null, label);
+    }
+    fr.appendChild(fchip("All", "all", null));
+    state.rcats.forEach(function (c) { fr.appendChild(fchip(c.name, c.id, c.color)); });
+    fr.appendChild(h("button", { class: "fchip edit", type: "button", onclick: function () { settings = "rcats"; render(); } }, "Edit categories"));
+    box.appendChild(fr);
+    var shown = state.recipes.filter(function (r) { return rfilter === "all" || r.rc === rfilter; });
+    if (!shown.length) {
+      box.appendChild(h("div", { class: "empty" },
+        h("strong", null, n ? "Nothing in this category" : "No recipes yet"),
+        n ? "Tap All to see every recipe, or save a new one here." : "Save a recipe, then send its ingredients to your list in one tap."));
+    }
+    shown.forEach(function (r) { box.appendChild(recipeEl(r)); });
+  }
+
+  var TICK ='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg>';
+
+  function row(item) {
+    var tick = h("span", { class: "tick" });
+    tick.innerHTML = TICK;
+    var main = h("button", { class: "main", type: "button", "aria-pressed": item.done ? "true" : "false", onclick: function () { toggle(item.id); } },
+      tick, h("span", { class: "nm" },
+        h("span", { class: "name" }, item.name),
+        item.src ? h("span", { class: "src" }, "for " + item.src) : null));
+    var r = h("div", { class: "row" + (item.done ? " done" : ""), cc: colorOf(item.cat) }, main);
+    if (item.done) {
+      if (item.qty > 1) r.appendChild(h("span", { class: "qtytag" }, "×" + item.qty));
+    } else {
+      r.appendChild(h("div", { class: "qty" },
+        h("button", { type: "button", "aria-label": item.qty === 1 ? "Remove " + item.name : "One less " + item.name, onclick: function () { changeQty(item.id, -1); } }, item.qty === 1 ? "×" : "−"),
+        h("span", { class: "n" }, String(item.qty)),
+        h("button", { type: "button", "aria-label": "One more " + item.name, onclick: function () { changeQty(item.id, 1); } }, "+")
+      ));
+    }
+    return r;
+  }
+
+  function render() {
+    var onList = tab === "list";
+    var panelOn = !!settings;
+    var cookOn = !!cooking;
+    $("tabList").setAttribute("aria-selected", onList ? "true" : "false");
+    $("tabRecipes").setAttribute("aria-selected", onList ? "false" : "true");
+    $("bar").hidden = !!editing && !onList && !panelOn && !cookOn;
+    $("tabbar").hidden = cookOn;
+    $("cookArea").hidden = !cookOn;
+    $("addArea").hidden = panelOn || cookOn || !onList;
+    $("note").hidden = panelOn || cookOn;
+    $("list").hidden = panelOn || cookOn || !onList;
+    $("recipes").hidden = panelOn || cookOn || onList;
+    $("panel").hidden = !panelOn || cookOn;
+    $("cook").hidden = !cookOn;
+    renderList();
+    if (cookOn) renderCook();
+    else if (panelOn) renderPanel();
+    else if (!onList) renderRecipes();
+  }
+
+  function renderList() {
+    var todo =state.items.filter(function (i) { return !i.done; });
+    var cart = state.items.filter(function (i) { return i.done; });
+    $("sub").textContent = todo.length + " to get · " + cart.length + " in cart";
+
+    var note = $("note");
+    note.textContent = "";
+    if (state.items.some(function (i) { return i.ex; }) || state.recipes.some(function (r) { return r.ex; })) {
+      note.appendChild(h("div", { class: "note" },
+        h("span", null, "These are examples."),
+        h("button", { type: "button", onclick: function () {
+          state.items = state.items.filter(function (i) { return !i.ex; });
+          state.recipes = state.recipes.filter(function (r) { return !r.ex; });
+          save(); render();
+        } }, "Clear examples")));
+    }
+
+    var list = $("list");
+    list.textContent = "";
+    if (!state.items.length) {
+      list.appendChild(h("div", { class: "empty" }, h("strong", null, "Nothing on the list"), "Type an item below or tap a suggestion."));
+    }
+    CATS.forEach(function (c) {
+      var items = todo.filter(function (i) { return i.cat === c[0]; });
+      if (!items.length) return;
+      list.appendChild(h("section", { class: "section" },
+        h("h2", null, h("span", { class: "lbl" }, h("span", { class: "dot", cc: colorOf(c[0]) }), c[1]), h("span", null, String(items.length))),
+        h("div", { class: "rows" }, items.map(row))));
+    });
+    if (cart.length) {
+      list.appendChild(h("section", { class: "section" },
+        h("h2", null, h("span", null, "In the cart · " + cart.length),
+          h("button", { type: "button", onclick: function () {
+            var before = snapshot();
+            state.items = state.items.filter(function (i) { return !i.done; });
+            save(); render();
+            showUndo("Cleared " + cart.length + (cart.length === 1 ? " item" : " items"), before);
+          } }, "Clear cart")),
+        h("div", { class: "rows" }, cart.map(row))));
+    }
+    list.appendChild(h("button", { class: "linkbtn", type: "button", onclick: function () { settings = "aisles"; render(); } }, "Edit aisle colours"));
+    renderChips();
+  }
+
+  function renderChips() {
+    var q = $("itemName").value.trim().toLowerCase();
+    var onList = {};
+    state.items.forEach(function (i) { if (!i.done) onList[i.name.toLowerCase()] = 1; });
+    var pool = state.known.slice().sort(function (a, b) { return b.k - a.k; }).map(function (k) { return [k.n, k.c]; });
+    DEFAULTS.forEach(function (d) {
+      if (!pool.some(function (p) { return p[0].toLowerCase() === d[0].toLowerCase(); })) pool.push(d);
+    });
+    var shown = pool.filter(function (p) {
+      var l = p[0].toLowerCase();
+      return !onList[l] && (!q || l.indexOf(q) !== -1);
+    }).slice(0, 10);
+    var chips = $("chips");
+    chips.textContent = "";
+    shown.forEach(function (p) {
+      chips.appendChild(h("button", { class: "chip", type: "button", onclick: function () { addItem(p[0], p[1]); } },
+        h("span", { class: "dot", cc: colorOf(p[1]) }), p[0]));
+    });
+    chips.hidden = !shown.length;
+  }
+
+  /* ---- Theme: Auto follows the phone, Light and Dark override it ---- */
+  var THEMES = ["auto", "light", "dark"];
+  var THEME_LABEL = { auto: "Auto", light: "Light", dark: "Dark" };
+  var SVG0 = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+  var THEME_ICON = {
+    auto: SVG0 + '<circle cx="10" cy="10" r="7"/><path d="M10 3a7 7 0 0 1 0 14z" fill="currentColor"/></svg>',
+    light: SVG0 + '<circle cx="10" cy="10" r="3.5"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg>',
+    dark: SVG0 + '<path d="M16.5 11.5A6.5 6.5 0 0 1 8.5 3.5a6.5 6.5 0 1 0 8 8Z"/></svg>'
+  };
+  var theme = "auto";
+  var hostTheme = document.documentElement.getAttribute("data-theme");
+
+  function applyTheme() {
+    var root = document.documentElement;
+    if (theme === "auto") {
+      if (hostTheme) root.setAttribute("data-theme", hostTheme);
+      else root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", theme);
+    }
+    var b = $("themeBtn");
+    b.innerHTML = THEME_ICON[theme] + "<span>" + THEME_LABEL[theme] + "</span>";
+    b.setAttribute("aria-label", "Theme: " + THEME_LABEL[theme] + ". Tap to change.");
+  }
+
+  function initTheme() {
+    try {
+      var t = localStorage.getItem("aisle-theme");
+      if (THEMES.indexOf(t) !== -1) theme = t;
+    } catch (e) {}
+    applyTheme();
+    $("themeBtn").addEventListener("click", function () {
+      theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+      try { localStorage.setItem("aisle-theme", theme); } catch (e) {}
+      applyTheme();
+    });
+  }
+
+  function init() {
+    initTheme();
+    var sel = $("itemCat");
+    CATS.forEach(function (c) { sel.appendChild(h("option", { value: c[0] }, c[1])); });
+    sel.value = "other";
+
+    var d = new Date();
+    var eyebrow = d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+    $("sync").textContent = eyebrow;
+
+    $("itemName").addEventListener("input", function (e) {
+      if (autoCat) sel.value = guessCat(e.target.value);
+      renderChips();
+    });
+    sel.addEventListener("change", function () { autoCat = false; });
+    $("addForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var input = $("itemName");
+      addItem(input.value, sel.value);
+      input.value = "";
+      sel.value = "other";
+      autoCat = true;
+      input.focus();
+    });
+
+    $("tabList").addEventListener("click", function () { tab = "list"; confirmDel = null; render(); });
+    $("tabRecipes").addEventListener("click", function () { tab = "recipes"; confirmDel = null; render(); });
+
+    $("toastUndo").addEventListener("click", doUndo);
+
+    if (window.ResizeObserver) {
+      new ResizeObserver(function () {
+        document.documentElement.style.setProperty("--bar-h", $("barIn").parentNode.offsetHeight + "px");
+      }).observe($("barIn").parentNode);
+    }
+
+    state = loadLocal() || seed();
+    render();
+    connect();
+  }
+
+  function connect() {
+    if (!window.claude || !window.claude.use) return;
+    window.claude.use("assets").then(function (a) {
+      if (!a) return;
+      assetsApi = a;
+      if (editing && tab === "recipes" && !settings && !cooking) render();
+    }).catch(noop);
+    Promise.all([window.claude.use("db"), window.claude.use("user")]).then(function (r) {
+      var db = r[0], user = r[1];
+      if (!db || !user) return null;
+      return user.id().then(function (id) {
+        if (!id) return;
+        ref = db.doc("data/users/" + id + "/list");
+        var slow = setTimeout(function () { setSync("Saved on this phone"); }, 10000);
+        ref.onSnapshot(function (snap) {
+          if (!snap.metadata.fromCache) clearTimeout(slow);
+          if (snap.metadata.hasPendingWrites || dirty || writing) return;
+          if (snap.exists) {
+            var d = snap.data();
+            if ((d.updatedAt || 0) !== state.updatedAt) {
+              state = normalize(d);
+              saveLocal();
+              if (!editing && !settings && !cooking) render();
+            }
+            if (!snap.metadata.fromCache) setSync("Synced");
+          } else if (!snap.metadata.fromCache) {
+            save();
+          }
+        }, function () { ref = null; setSync("Saved on this phone"); });
+      });
+    }).catch(function () { ref = null; });
+  }
+
+  loadImages().then(function () {
+    assetsApi = localAssets();
+    init();
+  });
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
+  }
+})();
+</script>
+
+</body>
+</html>
