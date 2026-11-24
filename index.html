@@ -340,6 +340,12 @@ body { overflow-x: hidden; touch-action: pan-y; }
 .ctools { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
 .prow2 { display: flex; gap: 8px; }
 .prow2 .btn { flex: 1; }
+.sfield { display: flex; flex-direction: column; gap: 6px; }
+.sfield label { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.sfield input {
+  width: 100%; height: 48px; padding: 0 14px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--bg); font-size: 16px;
+}
 .links { display: flex; flex-wrap: wrap; gap: 4px 18px; }
 .crow .hint { margin: 0; }
 .rthumb { flex: none; width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: var(--line); display: block; }
@@ -458,6 +464,7 @@ body { overflow-x: hidden; touch-action: pan-y; }
   var cooking = null, cookIdx = 0, showIngs = false, wakeOn = false, wake = null;
   var undoTimer = null, undoSnap = null;
   var assetsApi = null, downloadsApi = null;
+  var extraLinks = null, syncPanel = null;
   function noop() {}
   /* ---- Standalone storage: photos live in IndexedDB on this phone ---- */
   var urlMap = {};
@@ -924,12 +931,14 @@ body { overflow-x: hidden; touch-action: pan-y; }
   function renderPanel() {
     var isA = settings === "aisles";
     var isB = settings === "backup";
-    $("sub").textContent = isB ? "Move your data to another device or keep a copy." : isA ? "Pick a colour for each aisle." : "Rename, recolour, add or remove categories.";
+    var isS = settings === "sync";
+    $("sub").textContent = isS ? "Keep the same list on every device." : isB ? "Move your data to another device or keep a copy." : isA ? "Pick a colour for each aisle." : "Rename, recolour, add or remove categories.";
     var box = $("panel");
     box.textContent = "";
     box.appendChild(h("div", { class: "head" },
-      h("h2", { class: "ptitle" }, isB ? "Backup and restore" : isA ? "Aisle colours" : "Recipe categories"),
+      h("h2", { class: "ptitle" }, isS ? "Cloud sync" : isB ? "Backup and restore" : isA ? "Aisle colours" : "Recipe categories"),
       h("button", { class: "btn", type: "button", onclick: function () { settings = null; confirmCat = null; pendingImport = null; backupMsg = null; render(); } }, "Done")));
+    if (isS && syncPanel) { syncPanel(box); return; }
     if (isB) { renderBackup(box); return; }
     if (isA) {
       CATS.forEach(function (c) {
@@ -1383,7 +1392,8 @@ body { overflow-x: hidden; touch-action: pan-y; }
     }
     list.appendChild(h("div", { class: "links" },
       h("button", { class: "linkbtn", type: "button", onclick: function () { settings = "aisles"; render(); } }, "Edit aisle colours"),
-      h("button", { class: "linkbtn", type: "button", onclick: function () { settings = "backup"; backupMsg = null; render(); } }, "Backup and restore")));
+      h("button", { class: "linkbtn", type: "button", onclick: function () { settings = "backup"; backupMsg = null; render(); } }, "Backup and restore"),
+      extraLinks ? extraLinks() : null));
     renderChips();
   }
 
@@ -1521,9 +1531,373 @@ body { overflow-x: hidden; touch-action: pan-y; }
     }).catch(function () { ref = null; });
   }
 
+  /* ---- Cloud sync through the user's own Firebase project (standalone only) ---- */
+  var SKEY = "aisle-sync-v1";
+  var SIMG = "aisle-sync-imgs-v1";
+  var sync = { cfg: null, on: false, msg: null, busy: false, choice: null, last: 0, idToken: "", exp: 0, timer: null, pulling: false,
+               draft: { apiKey: "", projectId: "", email: "", pw: "" } };
+  var syncedImgs = {};
+  try { var rawCfg = localStorage.getItem(SKEY); if (rawCfg) sync.cfg = JSON.parse(rawCfg); } catch (e) {}
+  try { var rawImgs = localStorage.getItem(SIMG); if (rawImgs) syncedImgs = JSON.parse(rawImgs) || {}; } catch (e) {}
+  if (sync.cfg) { sync.draft.apiKey = sync.cfg.apiKey || ""; sync.draft.projectId = sync.cfg.projectId || ""; sync.draft.email = sync.cfg.email || ""; }
+
+  function cfgSave() { try { localStorage.setItem(SKEY, JSON.stringify(sync.cfg)); } catch (e) {} }
+  function imgsSave() { try { localStorage.setItem(SIMG, JSON.stringify(syncedImgs)); } catch (e) {} }
+  function base() {
+    var c = sync.cfg || {};
+    return {
+      id: c.idBase || "https://identitytoolkit.googleapis.com",
+      tok: c.tokBase || "https://securetoken.googleapis.com",
+      fs: c.fsBase || "https://firestore.googleapis.com"
+    };
+  }
+
+  function syncErr(msg, code) { var e = new Error(msg); e.syncCode = code || "error"; return e; }
+
+  function authMessage(code) {
+    var m = String(code || "");
+    if (/INVALID_PASSWORD|EMAIL_NOT_FOUND|INVALID_LOGIN_CREDENTIALS|INVALID_EMAIL/.test(m)) return "Wrong email or password.";
+    if (/OPERATION_NOT_ALLOWED|PASSWORD_LOGIN_DISABLED/.test(m)) return "Email and password sign-in is switched off in your Firebase project.";
+    if (/USER_DISABLED/.test(m)) return "That account has been disabled in Firebase.";
+    if (/TOO_MANY_ATTEMPTS/.test(m)) return "Too many attempts. Wait a few minutes and try again.";
+    if (/API key not valid|API_KEY_INVALID|INVALID_API_KEY/i.test(m)) return "That API key isn't valid. Copy it again from Firebase.";
+    return "Couldn't sign in. Check your details and try again.";
+  }
+
+  function postJson(url, body) {
+    return fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, json: j }; });
+    });
+  }
+
+  function signIn(email, pw) {
+    var c = sync.cfg;
+    return postJson(base().id + "/v1/accounts:signInWithPassword?key=" + encodeURIComponent(c.apiKey), { email: email, password: pw, returnSecureToken: true }).then(function (r) {
+      if (!r.ok) {
+        var m = r.json && r.json.error && (r.json.error.message || "");
+        throw syncErr(authMessage(m), "auth");
+      }
+      sync.idToken = r.json.idToken;
+      sync.exp = Date.now() + (parseInt(r.json.expiresIn, 10) || 3600) * 1000;
+      c.refreshToken = r.json.refreshToken;
+      c.uid = r.json.localId;
+      c.email = r.json.email || email;
+      cfgSave();
+    }, function (e) {
+      if (e && e.syncCode) throw e;
+      throw syncErr("Couldn't reach Firebase. Check your connection.", "net");
+    });
+  }
+
+  function refreshToken() {
+    var c = sync.cfg;
+    if (!c || !c.refreshToken) return Promise.reject(syncErr("Sign in again.", "auth"));
+    return fetch(base().tok + "/v1/token?key=" + encodeURIComponent(c.apiKey), {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "grant_type=refresh_token&refresh_token=" + encodeURIComponent(c.refreshToken)
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) throw syncErr("Sign in again.", "auth");
+        sync.idToken = j.id_token;
+        sync.exp = Date.now() + (parseInt(j.expires_in, 10) || 3600) * 1000;
+        if (j.refresh_token) { c.refreshToken = j.refresh_token; cfgSave(); }
+      });
+    }, function (e) {
+      if (e && e.syncCode) throw e;
+      throw syncErr("Offline", "net");
+    });
+  }
+
+  function getToken() {
+    if (sync.idToken && Date.now() < sync.exp - 60000) return Promise.resolve(sync.idToken);
+    return refreshToken().then(function () { return sync.idToken; });
+  }
+
+  function docUrl(path) {
+    var c = sync.cfg;
+    return base().fs + "/v1/projects/" + encodeURIComponent(c.projectId) + "/databases/(default)/documents/users/" + encodeURIComponent(c.uid) + "/" + path;
+  }
+
+  function api(method, path, body, retried) {
+    return getToken().then(function (t) {
+      return fetch(docUrl(path), {
+        method: method,
+        headers: { "Authorization": "Bearer " + t, "Content-Type": "application/json" },
+        body: body ? JSON.stringify(body) : undefined
+      });
+    }, function (e) { throw e; }).then(function (r) {
+      if (r.status === 401 && !retried) { sync.exp = 0; return api(method, path, body, true); }
+      return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, json: j }; });
+    }, function (e) {
+      if (e && e.syncCode) throw e;
+      throw syncErr("Offline", "net");
+    });
+  }
+
+  function failFrom(r) {
+    if (r.status === 403) return syncErr("Firestore refused access. Check that the security rules from the setup steps are published.", "rules");
+    if (r.status === 401) return syncErr("Sign in again.", "auth");
+    if (r.status === 404 && r.json && r.json.error && /database/i.test(r.json.error.message || "")) return syncErr("Create the Firestore database in your Firebase project first.", "rules");
+    return syncErr("Sync failed (" + r.status + ").", "error");
+  }
+
+  function remoteGet() {
+    return api("GET", "state/main").then(function (r) {
+      if (r.status === 404) return null;
+      if (r.status !== 200) throw failFrom(r);
+      var f = r.json.fields || {};
+      return { json: f.json && f.json.stringValue, updatedAt: Number(f.updatedAt && f.updatedAt.integerValue) || 0 };
+    });
+  }
+
+  function remotePut(data) {
+    return api("PATCH", "state/main?updateMask.fieldPaths=json&updateMask.fieldPaths=updatedAt", {
+      fields: { json: { stringValue: JSON.stringify(data) }, updatedAt: { integerValue: String(data.updatedAt || 0) } }
+    }).then(function (r) { if (r.status !== 200) throw failFrom(r); });
+  }
+
+  /* photos: re-encoded small enough for one Firestore field */
+  function syncImgData(id) {
+    return new Promise(function (resolve) {
+      var im = new Image();
+      im.onload = function () {
+        function enc(maxSide, q) {
+          var s = Math.min(1, maxSide / Math.max(im.naturalWidth, im.naturalHeight));
+          var c = document.createElement("canvas");
+          c.width = Math.max(1, Math.round(im.naturalWidth * s));
+          c.height = Math.max(1, Math.round(im.naturalHeight * s));
+          c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+          return c.toDataURL("image/jpeg", q);
+        }
+        try {
+          var u = enc(1000, 0.8);
+          if (u.length > 900000) u = enc(700, 0.7);
+          resolve(u.length > 950000 ? "" : u);
+        } catch (e) { resolve(""); }
+      };
+      im.onerror = function () { resolve(""); };
+      im.src = imgSrc(id);
+    });
+  }
+
+  function imgPut(id) {
+    return syncImgData(id).then(function (u) {
+      if (!u) return;
+      return api("PATCH", "images/" + encodeURIComponent(id) + "?updateMask.fieldPaths=data", { fields: { data: { stringValue: u } } }).then(function (r) {
+        if (r.status !== 200) throw failFrom(r);
+        syncedImgs[id] = 1; imgsSave();
+      });
+    });
+  }
+
+  function imgGet(id) {
+    return api("GET", "images/" + encodeURIComponent(id)).then(function (r) {
+      if (r.status === 404) return null;
+      if (r.status !== 200) throw failFrom(r);
+      var f = r.json.fields || {};
+      return f.data && f.data.stringValue || null;
+    });
+  }
+
+  function imgDelRemote(id) {
+    if (!sync.on) return;
+    delete syncedImgs[id]; imgsSave();
+    api("DELETE", "images/" + encodeURIComponent(id)).catch(function () {});
+  }
+
+  function putLocalImage(id, blob) {
+    return new Promise(function (res, rej) {
+      if (!idb) { rej(new Error("no storage")); return; }
+      var tx = idb.transaction("img", "readwrite");
+      tx.objectStore("img").put(blob, id);
+      tx.oncomplete = function () { urlMap[id] = URL.createObjectURL(blob); res(); };
+      tx.onerror = function () { rej(new Error("store")); };
+      tx.onabort = function () { rej(new Error("store")); };
+    });
+  }
+
+  function pushImages(data) {
+    var ids = (data.recipes || []).map(function (r) { return r.img; }).filter(function (id) { return id && !syncedImgs[id] && urlMap[id]; });
+    return ids.reduce(function (p, id) { return p.then(function () { return imgPut(id); }); }, Promise.resolve());
+  }
+
+  function syncPush(data) {
+    return pushImages(data).then(function () { return remotePut(data); }).then(function () { sync.last = Date.now(); });
+  }
+
+  function applyRemote(remote) {
+    var d;
+    try { d = JSON.parse(remote.json); } catch (e) { return Promise.reject(syncErr("The cloud copy is unreadable.", "error")); }
+    var incoming = normalize(d);
+    incoming.updatedAt = remote.updatedAt || incoming.updatedAt;
+    var need = incoming.recipes.filter(function (r) { return r.img && !urlMap[r.img]; });
+    return need.reduce(function (p, r) {
+      return p.then(function () {
+        return imgGet(r.img).then(function (u) {
+          if (!u || u.indexOf("data:image/") !== 0) { r.img = ""; return; }
+          return putLocalImage(r.img, dataUrlToBlob(u)).then(function () { syncedImgs[r.img] = 1; });
+        });
+      });
+    }, Promise.resolve()).then(function () {
+      imgsSave();
+      incoming.recipes.forEach(function (r) { if (r.img) syncedImgs[r.img] = 1; });
+      state = incoming;
+      saveLocal();
+      sync.last = Date.now();
+      if (!editing && !settings && !cooking) render();
+    });
+  }
+
+  function pull() {
+    if (!sync.on || sync.pulling || dirty || writing) return Promise.resolve();
+    sync.pulling = true;
+    return remoteGet().then(function (remote) {
+      if (!remote) return state.updatedAt > 0 ? syncPush(JSON.parse(JSON.stringify(state))) : null;
+      if (remote.updatedAt > state.updatedAt) return applyRemote(remote);
+      if (remote.updatedAt < state.updatedAt) return syncPush(JSON.parse(JSON.stringify(state)));
+    }).then(function () {
+      sync.pulling = false;
+      sync.last = Date.now();
+      setSync("Synced");
+    }, function (e) {
+      sync.pulling = false;
+      if (e && e.syncCode === "net") setSync("Offline, will sync later");
+      else if (e && e.syncCode === "auth") { setSync("Sign in again"); sync.on = false; stopSync(); sync.msg = { ok: false, t: "You've been signed out. Sign in again to keep syncing." }; }
+      else setSync("Sync problem");
+      if (e && e.syncCode !== "net") sync.msg = { ok: false, t: e.message };
+    });
+  }
+
+  var fakeRef = { set: function (data) { return syncPush(data); } };
+
+  function startSync() {
+    if (!sync.cfg || !sync.cfg.enabled || !sync.cfg.joined) return;
+    sync.on = true;
+    ref = fakeRef;
+    clearInterval(sync.timer);
+    sync.timer = setInterval(function () { if (document.visibilityState !== "hidden") pull(); }, sync.cfg.poll || 15000);
+    pull();
+  }
+
+  function stopSync() {
+    sync.on = false;
+    ref = null;
+    clearInterval(sync.timer);
+  }
+
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") pull(); });
+  window.addEventListener("online", function () { pull(); });
+
+  function hasRealData() { return state.updatedAt > 0; }
+
+  function finishJoin() {
+    sync.cfg.joined = true; sync.cfg.enabled = true; cfgSave();
+    sync.choice = null;
+    sync.draft.pw = "";
+    sync.msg = { ok: true, t: "Sync is on." };
+    startSync();
+  }
+
+  function joinAccount() {
+    return remoteGet().then(function (remote) {
+      if (!remote) {
+        if (!hasRealData()) state.updatedAt = Date.now();
+        return syncPush(JSON.parse(JSON.stringify(state))).then(finishJoin);
+      }
+      if (!hasRealData()) return applyRemote(remote).then(finishJoin);
+      sync.choice = remote;
+    });
+  }
+
+  function turnOn() {
+    var d = sync.draft;
+    var apiKey = d.apiKey.trim(), projectId = d.projectId.trim(), email = d.email.trim();
+    if (!apiKey || !projectId || !email || !d.pw) { sync.msg = { ok: false, t: "Fill in all four boxes." }; render(); return; }
+    var prev = sync.cfg || {};
+    sync.cfg = { apiKey: apiKey, projectId: projectId, email: email, idBase: prev.idBase, tokBase: prev.tokBase, fsBase: prev.fsBase, poll: prev.poll };
+    sync.busy = true; sync.msg = null; render();
+    signIn(email, d.pw).then(joinAccount).then(function () {
+      sync.busy = false; render();
+    }, function (e) {
+      sync.busy = false;
+      sync.msg = { ok: false, t: (e && e.message) || "Something went wrong." };
+      render();
+    });
+  }
+
+  function turnOff() {
+    stopSync();
+    if (sync.cfg) { sync.cfg.enabled = false; sync.cfg.joined = false; sync.cfg.refreshToken = ""; cfgSave(); }
+    sync.idToken = ""; sync.choice = null;
+    sync.msg = { ok: true, t: "Sync is off. Your data stays on this device." };
+    setSync("Saved on this phone");
+    render();
+  }
+
+  function fmtTime(t) {
+    try { return new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); } catch (e) { return ""; }
+  }
+
+  function syncField(label, key, type, ph) {
+    var id = "sync_" + key;
+    var inp = h("input", { type: type, id: id, placeholder: ph || "", autocomplete: key === "pw" ? "current-password" : "off", autocapitalize: "none", autocorrect: "off", spellcheck: "false" });
+    inp.value = sync.draft[key] || "";
+    inp.addEventListener("input", function () { sync.draft[key] = inp.value; });
+    return h("div", { class: "sfield" }, h("label", { for: id }, label), inp);
+  }
+
+  syncPanel = function (box) {
+    if (sync.choice) {
+      box.appendChild(h("div", { class: "crow" },
+        h("strong", null, "This account already has a list"),
+        h("p", { class: "hint" }, "Choose which copy to keep. The other one is replaced."),
+        h("button", { class: "btn", type: "button", onclick: function () {
+          var remote = sync.choice; sync.busy = true; render();
+          applyRemote(remote).then(finishJoin).then(function () { sync.busy = false; render(); }, function (e) { sync.busy = false; sync.msg = { ok: false, t: (e && e.message) || "Couldn't load the cloud copy." }; render(); });
+        } }, "Use the cloud copy"),
+        h("button", { class: "btn alt", type: "button", onclick: function () {
+          sync.busy = true; render();
+          state.updatedAt = Date.now(); saveLocal();
+          syncPush(JSON.parse(JSON.stringify(state))).then(finishJoin).then(function () { sync.busy = false; render(); }, function (e) { sync.busy = false; sync.msg = { ok: false, t: (e && e.message) || "Couldn't upload." }; render(); });
+        } }, "Use this device's copy")));
+    } else if (sync.on) {
+      box.appendChild(h("div", { class: "crow" },
+        h("strong", null, "Sync is on"),
+        h("p", { class: "hint" }, "Signed in as " + (sync.cfg.email || "your account") + (sync.last ? ". Last synced at " + fmtTime(sync.last) + "." : ".")),
+        h("div", { class: "prow2" },
+          h("button", { class: "btn", type: "button", onclick: function () { sync.msg = null; sync.busy = true; render(); pull().then(function () { sync.busy = false; if (!sync.msg) sync.msg = { ok: true, t: "Up to date." }; render(); }); } }, "Sync now"),
+          h("button", { class: "btn alt", type: "button", onclick: turnOff }, "Turn off"))));
+    } else {
+      var go = h("button", { class: "btn", type: "button", onclick: turnOn }, sync.busy ? "Signing in…" : "Turn on sync");
+      if (sync.busy) go.disabled = true;
+      box.appendChild(h("div", { class: "crow" },
+        h("strong", null, "Connect your Firebase project"),
+        h("p", { class: "hint" }, "Sync uses a free Firebase project that only you can open. Use the same details on every device."),
+        syncField("API key", "apiKey", "text", "AIza..."),
+        syncField("Project ID", "projectId", "text", "my-aisle-1234"),
+        syncField("Email", "email", "email", "you@example.com"),
+        syncField("Password", "pw", "password", ""),
+        go));
+    }
+    if (sync.msg) box.appendChild(h("p", { class: sync.msg.ok ? "hint" : "err" }, sync.msg.t));
+  };
+
+  extraLinks = function () {
+    return h("button", { class: "linkbtn", type: "button", onclick: function () { settings = "sync"; sync.msg = null; render(); } },
+      sync.on ? "Cloud sync (on)" : "Cloud sync");
+  };
+
+  function wrapAssetsForSync(a) {
+    if (!a) return a;
+    var orig = a.delete;
+    a.delete = function (id) { imgDelRemote(id); return orig(id); };
+    return a;
+  }
   loadImages().then(function () {
-    assetsApi = localAssets();
+    assetsApi = wrapAssetsForSync(localAssets());
     init();
+    startSync();
   });
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });

@@ -1,6 +1,7 @@
 // Caches the app so it opens offline. Bump VERSION when index.html changes.
-var VERSION = "aisle-v2";
+var VERSION = "aisle-v3";
 var FILES = ["./", "index.html", "manifest.webmanifest", "icon-180.png", "icon-192.png", "icon-512.png"];
+var FONT_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"];
 
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(VERSION).then(function (c) { return c.addAll(FILES); }).then(function () { return self.skipWaiting(); }));
@@ -17,7 +18,8 @@ self.addEventListener("fetch", function (e) {
   if (req.method !== "GET") return;
   var url = new URL(req.url);
   if (url.origin !== location.origin) {
-    // fonts: use the network when there is one, cached copy otherwise
+    // Only fonts are cached. Sync traffic (Firebase) must never be cached.
+    if (FONT_HOSTS.indexOf(url.hostname) === -1) return;
     e.respondWith(
       fetch(req).then(function (res) {
         var copy = res.clone();
