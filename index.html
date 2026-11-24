@@ -346,6 +346,8 @@ body { overflow-x: hidden; touch-action: pan-y; }
   width: 100%; height: 48px; padding: 0 14px; border-radius: 12px;
   border: 1px solid var(--line); background: var(--bg); font-size: 16px;
 }
+.sugg { min-height: 44px; align-items: center; }
+.sugg .sh { margin: 0; white-space: nowrap; }
 .links { display: flex; flex-wrap: wrap; gap: 4px 18px; }
 .crow .hint { margin: 0; }
 .rthumb { flex: none; width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: var(--line); display: block; }
@@ -418,7 +420,7 @@ body { overflow-x: hidden; touch-action: pan-y; }
   var KEY = "aisle-v1";
   var CATS = [
     ["produce", "Produce"], ["bakery", "Bread & bakery"], ["dairy", "Dairy & eggs"],
-    ["meat", "Meat & fish"], ["pantry", "Pantry"], ["frozen", "Frozen"],
+    ["meat", "Meat & fish"], ["pantry", "Pantry"], ["sauces", "Sauces & spices"], ["frozen", "Frozen"],
     ["drinks", "Drinks"], ["household", "Household"], ["other", "Other"]
   ];
   var CAT_LABEL = {};
@@ -428,11 +430,12 @@ body { overflow-x: hidden; touch-action: pan-y; }
     ["frozen", ["frozen", "ice", "pizza", "fish finger"]],
     ["household", ["toilet", "paper", "towel", "soap", "detergent", "dish", "sponge", "bin", "trash", "shampoo", "toothpaste", "laundry", "cleaner", "foil", "bag", "batter", "bulb", "tissue", "napkin"]],
     ["drinks", ["water", "juice", "soda", "cola", "beer", "wine", "sparkling", "drink", "lemonade"]],
+    ["sauces", ["sauce", "ketchup", "mayo", "mustard", "vinegar", "soy", "salsa", "pesto", "dressing", "spice", "seasoning", "salt\\b", "black pepper", "white pepper", "paprika", "cumin", "cinnamon", "oregano", "thyme", "rosemary", "curry", "chili", "chilli", "turmeric", "nutmeg", "bay leaf", "bay leaves", "cayenne", "sriracha", "tabasco", "tahini", "miso", "harissa"]],
     ["bakery", ["bread", "baguette", "bun", "roll", "croissant", "tortilla", "bagel", "cake", "toast"]],
     ["dairy", ["milk", "egg", "cheese", "butter", "yogurt", "yoghurt", "cream", "kefir", "mozzarella", "parmesan"]],
     ["meat", ["chicken", "beef", "pork", "ham", "bacon", "sausage", "fish", "salmon", "tuna", "shrimp", "steak", "turkey", "mince", "lamb"]],
     ["produce", ["apple", "banana", "tomato", "onion", "garlic", "lettuce", "spinach", "carrot", "potato", "lemon", "lime", "avocado", "pepper", "cucumber", "orange", "fruit", "veg", "salad", "mushroom", "berr", "grape", "broccoli", "basil", "parsley", "ginger", "zucchini", "courgette", "pear", "melon"]],
-    ["pantry", ["pasta", "rice", "flour", "sugar", "oil", "coffee", "tea", "cereal", "oat", "sauce", "bean", "lentil", "chickpea", "salt", "spice", "honey", "jam", "nut", "chocolate", "snack", "biscuit", "cracker", "can", "vinegar", "stock", "noodle"]]
+    ["pantry", ["pasta", "rice", "flour", "sugar", "oil", "coffee", "tea", "cereal", "oat", "bean", "lentil", "chickpea", "honey", "jam", "nut", "chocolate", "snack", "biscuit", "cracker", "can", "stock", "noodle"]]
   ].map(function (g) {
     return [g[0], g[1].map(function (k) { return new RegExp("\\b" + k.replace(/ /g, "\\s")); })];
   });
@@ -441,11 +444,12 @@ body { overflow-x: hidden; touch-action: pan-y; }
     ["Milk", "dairy"], ["Eggs", "dairy"], ["Bread", "bakery"], ["Bananas", "produce"],
     ["Coffee", "pantry"], ["Tomatoes", "produce"], ["Butter", "dairy"], ["Onions", "produce"],
     ["Pasta", "pantry"], ["Rice", "pantry"], ["Yogurt", "dairy"], ["Olive oil", "pantry"],
-    ["Chicken", "meat"], ["Apples", "produce"], ["Toilet paper", "household"]
+    ["Chicken", "meat"], ["Apples", "produce"], ["Toilet paper", "household"],
+    ["Salt", "sauces"], ["Soy sauce", "sauces"]
   ];
 
   var COLORS = ["red", "orange", "amber", "lime", "green", "teal", "blue", "indigo", "purple", "pink", "gray"];
-  var DEF_AISLE = { produce: "green", bakery: "amber", dairy: "blue", meat: "red", pantry: "orange", frozen: "teal", drinks: "indigo", household: "purple", other: "gray" };
+  var DEF_AISLE = { produce: "green", bakery: "amber", dairy: "blue", meat: "red", pantry: "orange", sauces: "lime", frozen: "teal", drinks: "indigo", household: "purple", other: "gray" };
   function defRcats() {
     return [
       { id: "veg", name: "Vegetarian", color: "green" },
@@ -1118,6 +1122,79 @@ body { overflow-x: hidden; touch-action: pan-y; }
     var txt = h("textarea", { id: "rIngs", placeholder: "4 tomatoes\n2 garlic cloves\nOlive oil", autocapitalize: "sentences" });
     txt.value = editing.text;
     txt.addEventListener("input", function () { editing.text = txt.value; });
+    /* ingredient autocomplete: suggestions for the line being typed */
+    var sugg = h("div", { class: "chips sugg", "aria-label": "Ingredient suggestions" });
+    function ingPool() {
+      var seen = {}, out = [];
+      function add(n) { var s = String(n).trim(), k = s.toLowerCase(); if (!k || seen[k]) return; seen[k] = 1; out.push(s); }
+      state.known.slice().sort(function (a, b) { return b.k - a.k; }).forEach(function (k) { add(k.n); });
+      state.recipes.forEach(function (r) { r.ings.forEach(function (i) { add(i.name); }); });
+      state.items.forEach(function (i) { add(i.name); });
+      DEFAULTS.forEach(function (d) { add(d[0]); });
+      return out;
+    }
+    function lineInfo() {
+      var v = txt.value;
+      var pos = txt.selectionStart == null ? v.length : txt.selectionStart;
+      var start = pos === 0 ? 0 : v.lastIndexOf("\n", pos - 1) + 1;
+      var end = v.indexOf("\n", pos);
+      if (end === -1) end = v.length;
+      var line = v.slice(start, end);
+      var m = line.match(/^(\d{1,3})\s*(?:x|×)?\s+(.*)$/i);
+      return { v: v, start: start, end: end, qty: m ? m[1] : "", name: (m ? m[2] : line).trim() };
+    }
+    function otherLines(info) {
+      var set = {};
+      var lines = info.v.split("\n");
+      var idx = info.v.slice(0, info.start).split("\n").length - 1;
+      lines.forEach(function (l, i) {
+        if (i === idx) return;
+        var m = l.trim().match(/^(\d{1,3})\s*(?:x|×)?\s+(.*)$/i);
+        set[(m ? m[2] : l).trim().toLowerCase()] = 1;
+      });
+      return set;
+    }
+    function insertSugg(name) {
+      var info = lineInfo();
+      var nl = (info.qty ? info.qty + " " : "") + name;
+      var tail = info.end === info.v.length ? "\n" : "";
+      txt.value = info.v.slice(0, info.start) + nl + tail + info.v.slice(info.end);
+      editing.text = txt.value;
+      autosize(txt);
+      txt.focus();
+      var caret = info.start + nl.length + (tail ? 1 : 0);
+      try { txt.setSelectionRange(caret, caret); } catch (e) {}
+      updateSugg();
+    }
+    function updateSugg() {
+      var info = lineInfo();
+      var q = info.name.toLowerCase();
+      sugg.textContent = "";
+      var list = [];
+      if (q) {
+        var present = otherLines(info);
+        var starts = [], inside = [];
+        ingPool().forEach(function (n) {
+          var l = n.toLowerCase();
+          if (l === q || present[l]) return;
+          if (l.indexOf(q) === 0) starts.push(n);
+          else if (l.indexOf(" " + q) !== -1) inside.push(n);
+        });
+        list = starts.concat(inside).slice(0, 8);
+      }
+      if (!list.length) {
+        sugg.appendChild(h("span", { class: "hint sh" }, q ? "No matches. Keep typing to add a new ingredient." : "Suggestions appear as you type."));
+        return;
+      }
+      list.forEach(function (n) {
+        sugg.appendChild(h("button", { class: "chip", type: "button",
+          onmousedown: function (e) { e.preventDefault(); },
+          onpointerdown: function (e) { e.preventDefault(); },
+          onclick: function () { insertSugg(n); } }, n));
+      });
+    }
+    ["input", "keyup", "click", "focus"].forEach(function (ev) { txt.addEventListener(ev, updateSugg); });
+    updateSugg();
     var stepsIn = h("textarea", { id: "rSteps", placeholder: "Boil the pasta\nFry the garlic\nToss and serve", autocapitalize: "sentences" });
     stepsIn.value = editing.steps || "";
     stepsIn.addEventListener("input", function () { editing.steps = stepsIn.value; });
@@ -1205,7 +1282,7 @@ body { overflow-x: hidden; touch-action: pan-y; }
       assetsApi ? photoBox : null,
       assetsApi ? fileIn : null,
       h("label", { for: "rCat" }, "Category"), catSel,
-      h("label", { for: "rIngs" }, "Ingredients"), txt,
+      h("label", { for: "rIngs" }, "Ingredients"), txt, sugg,
       h("p", { class: "hint" }, "One ingredient per line. A number at the start sets how many to buy, like 4 tomatoes. Aisles are filled in for you."),
       h("label", { for: "rSteps" }, "Method (optional)"), stepsIn,
       h("p", { class: "hint" }, "One step per line. Start cooking then shows one step at a time in large text."),
