@@ -194,6 +194,9 @@ h1 {
   padding: 10px 14px; font-size: 14px; white-space: nowrap;
 }
 .chip:active { background: var(--accent-soft); }
+.editchip { color: var(--muted, var(--ink)); font-weight: 600; background: transparent; }
+.delchip { border-color: var(--c-red); }
+.delchip .x { margin-left: 8px; color: var(--c-red); font-weight: 700; }
 .form { display: flex; gap: 8px; min-width: 0; }
 .form input[type="text"] {
   flex: 1; min-width: 0; height: 48px; padding: 0 14px; border-radius: 12px;
@@ -357,6 +360,13 @@ body { overflow-x: hidden; touch-action: pan-y; }
   border: 1px solid var(--line); background: var(--bg); font-size: 15px;
 }
 .movebar { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; margin-bottom: 14px; }
+.modes { display: flex; flex-wrap: wrap; gap: 8px; }
+.delbtn {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-width: 44px; height: 42px; padding: 0 12px; border-radius: 10px; font-size: 14px; font-weight: 600;
+  border: 1px solid var(--c-red); color: var(--c-red); background: transparent;
+}
+.delbtn svg { width: 18px; height: 18px; }
 .movebar .hint { margin: 0; }
 .main.static { cursor: default; }
 .row select {
@@ -369,7 +379,12 @@ body { overflow-x: hidden; touch-action: pan-y; }
 .rhero { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: var(--line); }
 .photo { display: flex; flex-direction: column; gap: 10px; }
 .photo .pv { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 12px; background: var(--line); display: block; }
-.photo .prow2 { display: flex; gap: 8px; }
+.photo .prow2 { display: flex; gap: 8px; flex-wrap: wrap; }
+.cropframe { width: 100%; aspect-ratio: 16 / 10; border-radius: 12px; overflow: hidden; background: var(--line); touch-action: none; cursor: grab; }
+.cropframe canvas { width: 100%; height: 100%; display: block; }
+.zoomrow { display: flex; align-items: center; gap: 10px; }
+.zoomrow input[type="range"] { flex: 1; min-width: 0; height: 32px; accent-color: var(--accent); }
+.zoomrow span { font-size: 13px; color: var(--muted, var(--ink)); flex: none; }
 .photo .prow2 .btn { flex: 1; }
 .vh { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden; }
 .topr { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -480,7 +495,8 @@ body { overflow-x: hidden; touch-action: pan-y; }
   var state = null;
   var ref = null, dirty = false, writing = false, timer = null, autoCat = true;
   var tab = "list", editing = null, open = {}, confirmDel = null;
-  var settings = null, rfilter = "all", confirmCat = null, moveMode = false;
+  var sugEdit = false;
+  var settings = null, rfilter = "all", confirmCat = null, moveMode = false, delMode = false;
   var cooking = null, cookIdx = 0, showIngs = false, wakeOn = false, wake = null;
   var undoTimer = null, undoSnap = null;
   var assetsApi = null, downloadsApi = null;
@@ -620,6 +636,8 @@ body { overflow-x: hidden; touch-action: pan-y; }
     return {
       updatedAt: 0,
       known: [],
+      hidden: [],
+      names: {},
       colors: JSON.parse(JSON.stringify(DEF_AISLE)),
       rcats: defRcats(),
       recipes: [exampleRecipe()],
@@ -636,7 +654,11 @@ body { overflow-x: hidden; touch-action: pan-y; }
   function normalize(d) {
     var items = Array.isArray(d && d.items) ? d.items : [];
     var known = Array.isArray(d && d.known) ? d.known : [];
-    var colors = {};
+    var colors = {}, names = {};
+    CATS.forEach(function (c) {
+      var n = d && d.names && d.names[c[0]];
+      if (typeof n === "string" && n.trim()) names[c[0]] = n.trim().slice(0, 30);
+    });
     CATS.forEach(function (c) {
       var v = d && d.colors && d.colors[c[0]];
       colors[c[0]] = COLORS.indexOf(v) !== -1 ? v : DEF_AISLE[c[0]];
@@ -667,7 +689,9 @@ body { overflow-x: hidden; touch-action: pan-y; }
       updatedAt: (d && d.updatedAt) || 0,
       recipes: recipes,
       colors: colors,
+      names: names,
       rcats: rcats,
+      hidden: (Array.isArray(d && d.hidden) ? d.hidden : []).map(function (x) { return String(x).toLowerCase(); }).filter(Boolean).slice(0, 500),
       items: items.filter(function (i) { return i && i.name; }).map(function (i) {
         var o = { id: i.id || uid(), name: String(i.name), qty: Math.max(1, i.qty | 0 || 1), cat: CAT_LABEL[i.cat] ? i.cat : "other", done: !!i.done };
         if (i.ex) o.ex = true;
@@ -675,7 +699,9 @@ body { overflow-x: hidden; touch-action: pan-y; }
         return o;
       }),
       known: known.filter(function (k) { return k && k.n; }).map(function (k) {
-        return { n: String(k.n), c: CAT_LABEL[k.c] ? k.c : "other", k: k.k | 0 || 1 };
+        var o = { n: String(k.n), c: CAT_LABEL[k.c] ? k.c : "other", k: k.k | 0 || 1 };
+        if (k.t > 0) o.t = +k.t;
+        return o;
       })
     };
   }
@@ -739,6 +765,67 @@ body { overflow-x: hidden; touch-action: pan-y; }
     return "other";
   }
 
+  /* ---- Word scoring: ranks suggestions by match quality, how often and how recently you used a word ---- */
+  var DAY = 86400000;
+  function hideWord(name) {
+    var low = name.toLowerCase();
+    if (state.hidden.indexOf(low) === -1) state.hidden.push(low);
+    state.known = state.known.filter(function (x) { return x.n.toLowerCase() !== low; });
+    save();
+  }
+  function bump(name, cat) {
+    var low = name.toLowerCase();
+    state.hidden = (state.hidden || []).filter(function (x) { return x !== low; });
+    var k = state.known.filter(function (x) { return x.n.toLowerCase() === low; })[0];
+    if (k) { k.k += 1; k.t = Date.now(); if (cat) k.c = cat; }
+    else {
+      state.known.push({ n: name, c: cat || guessCat(name), k: 1, t: Date.now() });
+      if (state.known.length > 300) {
+        state.known.sort(function (a, b) { return useScore(b) - useScore(a); });
+        state.known.length = 300;
+      }
+    }
+  }
+  function useScore(w) {
+    var s = 12 * Math.log(1 + (w.k || 0)) / Math.LN2;
+    if (w.t) s += 20 * Math.exp(-Math.max(0, Date.now() - w.t) / (30 * DAY));
+    return s;
+  }
+  function matchScore(l, q) {
+    if (!q) return 0;
+    if (l.indexOf(q) === 0) return 100 - Math.min(20, l.length - q.length);
+    if (l.indexOf(" " + q) !== -1) return 60;
+    if (l.indexOf(q) !== -1) return 25;
+    return -1;
+  }
+  /* every word you have written: list items, recipe ingredients, saved words, plus the starter suggestions */
+  function wordPool() {
+    var map = {};
+    function get(n, c) {
+      var s = String(n).trim(), l = s.toLowerCase();
+      if (!l || state.hidden.indexOf(l) !== -1) return null;
+      return map[l] || (map[l] = { n: s, c: c || null, k: 0, t: 0, l: l });
+    }
+    state.known.forEach(function (x) { var w = get(x.n, x.c); if (!w) return; w.n = x.n; w.c = x.c; w.k += x.k; w.t = Math.max(w.t, x.t || 0); });
+    state.recipes.forEach(function (r) { r.ings.forEach(function (i) { var w = get(i.name, i.cat); if (!w) return; if (!w.c) w.c = i.cat; w.k += 1; }); });
+    state.items.forEach(function (i) { var w = get(i.name, i.cat); if (!w) return; if (!w.c) w.c = i.cat; w.k += 1; });
+    DEFAULTS.forEach(function (d) { get(d[0], d[1]); });
+    return Object.keys(map).map(function (l) { map[l].c = map[l].c || guessCat(map[l].n); return map[l]; });
+  }
+  function rankWords(q, skip, limit) {
+    q = q.trim().toLowerCase();
+    var out = [];
+    wordPool().forEach(function (w) {
+      if (skip && skip[w.l]) return;
+      var m = matchScore(w.l, q);
+      if (q && m < 0) return;
+      w.score = m + useScore(w);
+      out.push(w);
+    });
+    out.sort(function (a, b) { return b.score - a.score || a.n.localeCompare(b.n); });
+    return out.slice(0, limit);
+  }
+
   function addItem(name, cat) {
     name = name.trim().replace(/\s+/g, " ");
     if (!name) return;
@@ -751,15 +838,7 @@ body { overflow-x: hidden; touch-action: pan-y; }
     } else {
       state.items.push({ id: uid(), name: name, qty: 1, cat: cat, done: false });
     }
-    var k = state.known.filter(function (x) { return x.n.toLowerCase() === low; })[0];
-    if (k) { k.k += 1; k.c = existing ? existing.cat : cat; }
-    else {
-      state.known.push({ n: name, c: cat, k: 1 });
-      if (state.known.length > 200) {
-        state.known.sort(function (a, b) { return b.k - a.k; });
-        state.known.length = 200;
-      }
-    }
+    bump(name, existing ? existing.cat : cat);
     save();
     render();
   }
@@ -791,6 +870,7 @@ body { overflow-x: hidden; touch-action: pan-y; }
       if (only != null && only !== idx) return;
       if (status(ing.name)) return;
       state.items.push({ id: uid(), name: ing.name, qty: ing.qty, cat: ing.cat, done: false, src: r.name });
+      bump(ing.name, ing.cat);
       added++;
     });
     if (added) save();
@@ -811,6 +891,13 @@ body { overflow-x: hidden; touch-action: pan-y; }
     return r.ings.map(function (i) { return (i.qty > 1 ? i.qty + " " : "") + i.name; }).join("\n");
   }
 
+  function aisleName(id) { return (state && state.names && state.names[id]) || CAT_LABEL[id] || id; }
+  function fillAisleSelect() {
+    var sel = $("itemCat"), cur = sel.value || "other";
+    sel.textContent = "";
+    CATS.forEach(function (c) { sel.appendChild(h("option", { value: c[0] }, aisleName(c[0]))); });
+    sel.value = cur;
+  }
   function colorOf(aisle) { return (state.colors && state.colors[aisle]) || "gray"; }
   function rcat(id) { return state.rcats.filter(function (c) { return c.id === id; })[0] || null; }
 
@@ -959,24 +1046,33 @@ body { overflow-x: hidden; touch-action: pan-y; }
     var isA = settings === "aisles";
     var isB = settings === "backup";
     var isS = settings === "sync";
-    $("sub").textContent = isS ? "Keep the same list on every device." : isB ? "Move your data to another device or keep a copy." : isA ? "Pick a colour for each aisle." : "Rename, recolour, add or remove categories.";
+    $("sub").textContent = isS ? "Keep the same list on every device." : isB ? "Move your data to another device or keep a copy." : isA ? "Rename or recolour each aisle." : "Rename, recolour, add or remove categories.";
     var box = $("panel");
     box.textContent = "";
     box.appendChild(h("div", { class: "head" },
-      h("h2", { class: "ptitle" }, isS ? "Cloud sync" : isB ? "Backup and restore" : isA ? "Aisle colours" : "Recipe categories"),
+      h("h2", { class: "ptitle" }, isS ? "Cloud sync" : isB ? "Backup and restore" : isA ? "Aisles" : "Recipe categories"),
       h("button", { class: "btn", type: "button", onclick: function () { settings = null; confirmCat = null; pendingImport = null; backupMsg = null; render(); } }, "Done")));
     if (isS && syncPanel) { syncPanel(box); return; }
     if (isB) { renderBackup(box); return; }
     if (isA) {
       CATS.forEach(function (c) {
+        var ainp = h("input", { type: "text", maxlength: "30", "aria-label": "Aisle name", autocomplete: "off", placeholder: CAT_LABEL[c[0]] });
+        ainp.value = aisleName(c[0]);
+        ainp.addEventListener("input", function () {
+          var v = ainp.value.trim();
+          if (v && v !== CAT_LABEL[c[0]]) state.names[c[0]] = v; else delete state.names[c[0]];
+          save();
+        });
+        ainp.addEventListener("blur", function () { if (!ainp.value.trim()) ainp.value = aisleName(c[0]); });
         box.appendChild(h("div", { class: "crow" },
-          h("div", { class: "nm1" }, h("span", { class: "dot", cc: colorOf(c[0]) }), h("strong", null, c[1])),
+          h("div", { class: "nm1" }, h("span", { class: "dot", cc: colorOf(c[0]) }), ainp),
           swatches(colorOf(c[0]), function (col) { state.colors[c[0]] = col; save(); render(); })));
       });
       box.appendChild(h("button", { class: "linkbtn", type: "button", onclick: function () {
         CATS.forEach(function (c) { state.colors[c[0]] = DEF_AISLE[c[0]]; });
+        state.names = {};
         save(); render();
-      } }, "Reset to default colours"));
+      } }, "Reset names and colours"));
       return;
     }
     state.rcats.forEach(function (c) {
@@ -1147,15 +1243,6 @@ body { overflow-x: hidden; touch-action: pan-y; }
     txt.addEventListener("input", function () { editing.text = txt.value; });
     /* ingredient autocomplete: suggestions for the line being typed */
     var sugg = h("div", { class: "chips sugg", "aria-label": "Ingredient suggestions" });
-    function ingPool() {
-      var seen = {}, out = [];
-      function add(n) { var s = String(n).trim(), k = s.toLowerCase(); if (!k || seen[k]) return; seen[k] = 1; out.push(s); }
-      state.known.slice().sort(function (a, b) { return b.k - a.k; }).forEach(function (k) { add(k.n); });
-      state.recipes.forEach(function (r) { r.ings.forEach(function (i) { add(i.name); }); });
-      state.items.forEach(function (i) { add(i.name); });
-      DEFAULTS.forEach(function (d) { add(d[0]); });
-      return out;
-    }
     function lineInfo() {
       var v = txt.value;
       var pos = txt.selectionStart == null ? v.length : txt.selectionStart;
@@ -1208,24 +1295,20 @@ body { overflow-x: hidden; touch-action: pan-y; }
       var list = [];
       if (q) {
         var present = otherLines(info);
-        var starts = [], inside = [];
-        ingPool().forEach(function (n) {
-          var l = n.toLowerCase();
-          if (l === q || present[l]) return;
-          if (l.indexOf(q) === 0) starts.push(n);
-          else if (l.indexOf(" " + q) !== -1) inside.push(n);
-        });
-        list = starts.concat(inside).slice(0, 8);
+        list = rankWords(q, Object.assign({ [q]: 1 }, present), 8).map(function (w) { return w.n; });
       }
       if (!list.length) {
+        if (sugEdit) sugg.appendChild(editChip(function () { updateSugg(); renderChips(); }));
         sugg.appendChild(h("span", { class: "hint sh" }, q ? "No matches. Keep typing to add a new ingredient." : "Suggestions appear as you type."));
         return;
       }
+      sugg.appendChild(editChip(function () { updateSugg(); renderChips(); }));
       list.forEach(function (n) {
-        sugg.appendChild(h("button", { class: "chip", type: "button",
+        sugg.appendChild(h("button", { class: "chip" + (sugEdit ? " delchip" : ""), type: "button",
           onmousedown: function (e) { e.preventDefault(); },
           onpointerdown: function (e) { e.preventDefault(); },
-          onclick: function () { insertSugg(n); } }, n));
+          onclick: function () { if (sugEdit) { hideWord(n); updateSugg(); renderChips(); } else insertSugg(n); } },
+          n, sugEdit ? h("span", { class: "x", "aria-hidden": "true" }, "×") : null));
       });
     }
     ["input", "keyup", "click", "focus"].forEach(function (ev) { txt.addEventListener(ev, updateSugg); });
@@ -1248,7 +1331,7 @@ body { overflow-x: hidden; touch-action: pan-y; }
         var k = ing.name.toLowerCase();
         var dot = h("span", { class: "dot", cc: colorOf(ing.cat) });
         var sel = h("select", { "aria-label": "Aisle for " + ing.name },
-          CATS.map(function (c) { return h("option", { value: c[0] }, c[1]); }));
+          CATS.map(function (c) { return h("option", { value: c[0] }, aisleName(c[0])); }));
         sel.value = ing.cat;
         sel.addEventListener("change", function () {
           editing.cats[k] = sel.value;
@@ -1265,8 +1348,146 @@ body { overflow-x: hidden; touch-action: pan-y; }
     var ed = editing;
     var photoBox = h("div", { class: "photo" });
     var fileIn = h("input", { type: "file", accept: "image/*", id: "rPhotoFile", class: "vh", tabindex: "-1" });
+    function loadImg(url) {
+      return new Promise(function (res, rej) {
+        var im = new Image();
+        im.onload = function () { res(im); };
+        im.onerror = function () { rej(new Error("decode")); };
+        im.src = url;
+      });
+    }
+    function toCanvas(im, max) {
+      var k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+      var c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(im.naturalWidth * k));
+      c.height = Math.max(1, Math.round(im.naturalHeight * k));
+      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      return c;
+    }
+    function startCrop(url, revoke) {
+      ed.perr = "";
+      ed.busy = true;
+      drawPhoto();
+      loadImg(url).then(function (im) {
+        var src = toCanvas(im, 2400);
+        if (revoke) URL.revokeObjectURL(url);
+        ed.busy = false;
+        ed.crop = { src: src };
+        if (editing === ed) drawPhoto();
+      }).catch(function () {
+        if (revoke) URL.revokeObjectURL(url);
+        ed.busy = false;
+        ed.perr = "Couldn't open that photo. Try a different one.";
+        if (editing === ed) drawPhoto();
+      });
+    }
+    function uploadBlob(blob) {
+      ed.busy = true;
+      ed.perr = "";
+      ed.crop = null;
+      drawPhoto();
+      return assetsApi.upload(blob, { type: "image/jpeg" }).then(function (res) {
+        if (editing !== ed) { dropAsset(res.id); return; }
+        if (ed.img && ed.img !== ed.origImg) dropAsset(ed.img);
+        ed.img = res.id;
+        ed.busy = false;
+        drawPhoto();
+      }).catch(function (e) {
+        ed.busy = false;
+        ed.perr = e && e.code === "quota_or_state" ? "This page has no photo storage left." : "Couldn't save that photo. Try again.";
+        if (editing === ed) drawPhoto();
+      });
+    }
+    /* Crop and resize: the frame is the 16:10 shape recipe photos are shown in. Drag to move, pinch or slide to zoom. */
+    function drawCrop() {
+      var cr = ed.crop, FW = 800, FH = 500;
+      var cv = h("canvas", { width: String(FW), height: String(FH) });
+      var frame = h("div", { class: "cropframe" }, cv);
+      var ctx = cv.getContext("2d");
+      var slider = h("input", { type: "range", step: "any", "aria-label": "Zoom" });
+      function base() { return { cover: Math.max(FW / cr.src.width, FH / cr.src.height), contain: Math.min(FW / cr.src.width, FH / cr.src.height) }; }
+      function reset() { var b = base(); cr.k = b.cover; cr.cx = FW / 2; cr.cy = FH / 2; }
+      function limits() { var b = base(); slider.min = String(b.contain / b.cover); slider.max = "4"; }
+      function clamp() {
+        var w = cr.src.width * cr.k, hh = cr.src.height * cr.k;
+        cr.cx = w >= FW ? Math.min(w / 2, Math.max(FW - w / 2, cr.cx)) : FW / 2;
+        cr.cy = hh >= FH ? Math.min(hh / 2, Math.max(FH - hh / 2, cr.cy)) : FH / 2;
+      }
+      function paint(c, scale) {
+        var w = cr.src.width * cr.k * scale, hh = cr.src.height * cr.k * scale;
+        c.fillStyle = "#efe6d4";
+        c.fillRect(0, 0, FW * scale, FH * scale);
+        c.drawImage(cr.src, cr.cx * scale - w / 2, cr.cy * scale - hh / 2, w, hh);
+      }
+      function draw() { clamp(); paint(ctx, 1); slider.value = String(cr.k / base().cover); }
+      function zoomTo(k) {
+        var b = base();
+        k = Math.max(b.contain, Math.min(b.cover * 4, k));
+        var f = k / cr.k;
+        cr.cx = FW / 2 + (cr.cx - FW / 2) * f;
+        cr.cy = FH / 2 + (cr.cy - FH / 2) * f;
+        cr.k = k;
+        draw();
+      }
+      if (!cr.k) reset();
+      limits();
+      draw();
+      var pts = {}, last = null;
+      function ratio() { return FW / (frame.clientWidth || FW); }
+      function dist() { var a = Object.keys(pts).map(function (i) { return pts[i]; }); return Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); }
+      frame.addEventListener("pointerdown", function (e) {
+        pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+        try { frame.setPointerCapture(e.pointerId); } catch (x) {}
+        last = Object.keys(pts).length === 2 ? dist() : null;
+      });
+      frame.addEventListener("pointermove", function (e) {
+        var pt = pts[e.pointerId];
+        if (!pt) return;
+        var n = Object.keys(pts).length;
+        if (n === 1) {
+          cr.cx += (e.clientX - pt.x) * ratio();
+          cr.cy += (e.clientY - pt.y) * ratio();
+          pt.x = e.clientX; pt.y = e.clientY;
+          draw();
+        } else if (n === 2) {
+          pt.x = e.clientX; pt.y = e.clientY;
+          var d = dist();
+          if (last) zoomTo(cr.k * d / last);
+          last = d;
+        }
+      });
+      function up(e) { delete pts[e.pointerId]; last = null; }
+      frame.addEventListener("pointerup", up);
+      frame.addEventListener("pointercancel", up);
+      frame.addEventListener("wheel", function (e) { e.preventDefault(); zoomTo(cr.k * (e.deltaY < 0 ? 1.08 : 1 / 1.08)); }, { passive: false });
+      slider.addEventListener("input", function () { zoomTo(base().cover * parseFloat(slider.value)); });
+      photoBox.appendChild(frame);
+      photoBox.appendChild(h("div", { class: "zoomrow" }, h("span", null, "Zoom"), slider));
+      photoBox.appendChild(h("p", { class: "hint" }, "Drag the photo to move it. Pinch or use the slider to zoom."));
+      photoBox.appendChild(h("div", { class: "prow2" },
+        h("button", { class: "btn alt", type: "button", onclick: function () {
+          var s0 = cr.src, c = document.createElement("canvas");
+          c.width = s0.height; c.height = s0.width;
+          var cx2 = c.getContext("2d");
+          cx2.translate(c.width, 0); cx2.rotate(Math.PI / 2); cx2.drawImage(s0, 0, 0);
+          cr.src = c; reset(); limits(); draw();
+        } }, "Rotate"),
+        h("button", { class: "btn alt", type: "button", onclick: function () { reset(); draw(); } }, "Reset")));
+      photoBox.appendChild(h("div", { class: "prow2" },
+        h("button", { class: "btn alt", type: "button", onclick: function () { ed.crop = null; drawPhoto(); } }, "Cancel"),
+        h("button", { class: "btn", type: "button", onclick: function () {
+          var out = document.createElement("canvas");
+          out.width = 1200; out.height = 750;
+          paint(out.getContext("2d"), 1.5);
+          out.toBlob(function (b) {
+            if (b) uploadBlob(b);
+            else { ed.perr = "Couldn't save that photo. Try again."; drawPhoto(); }
+          }, "image/jpeg", 0.85);
+        } }, "Use photo")));
+    }
     function drawPhoto() {
       photoBox.textContent = "";
+      if (ed.crop && !ed.busy) { drawCrop(); return; }
       if (ed.img) {
         var pv = h("img", { class: "pv", alt: "Recipe photo", src: imgSrc(ed.img) });
         pv.addEventListener("error", function () { pv.style.display = "none"; });
@@ -1274,10 +1495,11 @@ body { overflow-x: hidden; touch-action: pan-y; }
       }
       if (ed.perr) photoBox.appendChild(h("p", { class: "err" }, ed.perr));
       var pick = h("button", { class: "btn alt", type: "button", onclick: function () { fileIn.click(); } },
-        ed.busy ? "Uploading…" : ed.img ? "Change photo" : "Add photo");
+        ed.busy ? "Working…" : ed.img ? "Change photo" : "Add photo");
       if (ed.busy) pick.disabled = true;
       var row2 = h("div", { class: "prow2" }, pick);
       if (ed.img && !ed.busy) {
+        row2.appendChild(h("button", { class: "btn alt", type: "button", onclick: function () { startCrop(imgSrc(ed.img), false); } }, "Edit"));
         row2.appendChild(h("button", { class: "btn alt", type: "button", onclick: function () {
           if (ed.img !== ed.origImg) dropAsset(ed.img);
           ed.img = "";
@@ -1290,22 +1512,7 @@ body { overflow-x: hidden; touch-action: pan-y; }
       var f = fileIn.files && fileIn.files[0];
       fileIn.value = "";
       if (!f || !assetsApi) return;
-      ed.busy = true;
-      ed.perr = "";
-      drawPhoto();
-      shrink(f).then(function (blob) {
-        return assetsApi.upload(blob, { type: "image/jpeg" });
-      }).then(function (res) {
-        if (editing !== ed) { dropAsset(res.id); return; }
-        if (ed.img && ed.img !== ed.origImg) dropAsset(ed.img);
-        ed.img = res.id;
-        ed.busy = false;
-        drawPhoto();
-      }).catch(function (e) {
-        ed.busy = false;
-        ed.perr = e && e.code === "quota_or_state" ? "This page has no photo storage left." : "Couldn't add that photo. Try a different one.";
-        if (editing === ed) drawPhoto();
-      });
+      startCrop(URL.createObjectURL(f), true);
     });
     drawPhoto();
     function autosize(t) { t.style.height = "auto"; t.style.height = (t.scrollHeight + 2) + "px"; }
@@ -1323,9 +1530,7 @@ body { overflow-x: hidden; touch-action: pan-y; }
       if (!ings.length) return fail("Add at least one ingredient.");
       if (ed.busy) return fail("Wait for the photo to finish uploading.");
       ings.forEach(function (ing) {
-        if (!ed.cats[ing.name.toLowerCase()]) return;
-        var kn = state.known.filter(function (x) { return x.n.toLowerCase() === ing.name.toLowerCase(); })[0];
-        if (kn) kn.c = ing.cat; else state.known.push({ n: ing.name, c: ing.cat, k: 1 });
+        bump(ing.name, ed.cats[ing.name.toLowerCase()] ? ing.cat : null);
       });
       if (ed.origImg && ed.origImg !== ed.img) dropAsset(ed.origImg);
       if (editing.id) {
@@ -1468,9 +1673,25 @@ body { overflow-x: hidden; touch-action: pan-y; }
     render();
   }
 
+  function deleteItem(id) {
+    var i = find(id);
+    if (!i) return;
+    var before = snapshot();
+    state.items = state.items.filter(function (x) { return x.id !== id; });
+    save();
+    render();
+    showUndo("Removed " + i.name, before);
+  }
+  function delRow(item) {
+    return h("div", { class: "row" + (item.done ? " done" : ""), cc: colorOf(item.cat) },
+      h("div", { class: "main static" },
+        h("span", { class: "dot", cc: colorOf(item.cat) }),
+        h("span", { class: "nm" }, h("span", { class: "name" }, item.name), item.src ? h("span", { class: "src" }, "for " + item.src) : null)),
+      h("button", { class: "delbtn", type: "button", "aria-label": "Delete " + item.name, onclick: function () { deleteItem(item.id); } }, "Delete"));
+  }
   function moveRow(item) {
     var sel = h("select", { "aria-label": "Aisle for " + item.name },
-      CATS.map(function (c) { return h("option", { value: c[0] }, c[1]); }));
+      CATS.map(function (c) { return h("option", { value: c[0] }, aisleName(c[0])); }));
     sel.value = item.cat;
     sel.addEventListener("change", function () { moveItem(item.id, sel.value); });
     return h("div", { class: "row" + (item.done ? " done" : ""), cc: colorOf(item.cat) },
@@ -1482,6 +1703,7 @@ body { overflow-x: hidden; touch-action: pan-y; }
 
   function row(item) {
     if (moveMode) return moveRow(item);
+    if (delMode) return delRow(item);
     var tick = h("span", { class: "tick" });
     tick.innerHTML = TICK;
     var main = h("button", { class: "main", type: "button", "aria-pressed": item.done ? "true" : "false", onclick: function () { toggle(item.id); } },
@@ -1502,6 +1724,7 @@ body { overflow-x: hidden; touch-action: pan-y; }
   }
 
   function render() {
+    fillAisleSelect();
     var onList = tab === "list";
     var panelOn = !!settings;
     var cookOn = !!cooking;
@@ -1546,15 +1769,19 @@ body { overflow-x: hidden; touch-action: pan-y; }
     }
     if (state.items.length) {
       list.appendChild(h("div", { class: "movebar" },
-        h("button", { class: "fchip", type: "button", "aria-pressed": moveMode ? "true" : "false", onclick: function () { moveMode = !moveMode; render(); } },
-          moveMode ? "Done changing aisles" : "Change aisles"),
-        moveMode ? h("p", { class: "hint" }, "Pick an aisle for each item. The app remembers it for next time.") : null));
+        h("div", { class: "modes" },
+          h("button", { class: "fchip", type: "button", "aria-pressed": moveMode ? "true" : "false", onclick: function () { moveMode = !moveMode; delMode = false; render(); } },
+            moveMode ? "Done changing aisles" : "Change aisles"),
+          h("button", { class: "fchip", type: "button", "aria-pressed": delMode ? "true" : "false", onclick: function () { delMode = !delMode; moveMode = false; render(); } },
+            delMode ? "Done deleting" : "Delete items")),
+        moveMode ? h("p", { class: "hint" }, "Pick an aisle for each item. The app remembers it for next time.") : null,
+        delMode ? h("p", { class: "hint" }, "Tap Delete next to any item to remove it. You can undo right after.") : null));
     }
     CATS.forEach(function (c) {
       var items = todo.filter(function (i) { return i.cat === c[0]; });
       if (!items.length) return;
       list.appendChild(h("section", { class: "section" },
-        h("h2", null, h("span", { class: "lbl" }, h("span", { class: "dot", cc: colorOf(c[0]) }), c[1]), h("span", null, String(items.length))),
+        h("h2", null, h("span", { class: "lbl" }, h("span", { class: "dot", cc: colorOf(c[0]) }), aisleName(c[0])), h("span", null, String(items.length))),
         h("div", { class: "rows" }, items.map(row))));
     });
     if (cart.length) {
@@ -1569,31 +1796,35 @@ body { overflow-x: hidden; touch-action: pan-y; }
         h("div", { class: "rows" }, cart.map(row))));
     }
     list.appendChild(h("div", { class: "links" },
-      h("button", { class: "linkbtn", type: "button", onclick: function () { settings = "aisles"; render(); } }, "Edit aisle colours"),
+      h("button", { class: "linkbtn", type: "button", onclick: function () { settings = "aisles"; render(); } }, "Edit aisles"),
       h("button", { class: "linkbtn", type: "button", onclick: function () { settings = "backup"; backupMsg = null; render(); } }, "Backup and restore"),
       extraLinks ? extraLinks() : null));
     renderChips();
   }
 
+  function editChip(after) {
+    return h("button", { class: "chip editchip", type: "button", "aria-pressed": sugEdit ? "true" : "false",
+      onmousedown: function (e) { e.preventDefault(); }, onpointerdown: function (e) { e.preventDefault(); },
+      onclick: function () { sugEdit = !sugEdit; after(); } }, sugEdit ? "Done" : "Edit");
+  }
   function renderChips() {
-    var q = $("itemName").value.trim().toLowerCase();
+    var q = $("itemName").value;
     var onList = {};
     state.items.forEach(function (i) { if (!i.done) onList[i.name.toLowerCase()] = 1; });
-    var pool = state.known.slice().sort(function (a, b) { return b.k - a.k; }).map(function (k) { return [k.n, k.c]; });
-    DEFAULTS.forEach(function (d) {
-      if (!pool.some(function (p) { return p[0].toLowerCase() === d[0].toLowerCase(); })) pool.push(d);
-    });
-    var shown = pool.filter(function (p) {
-      var l = p[0].toLowerCase();
-      return !onList[l] && (!q || l.indexOf(q) !== -1);
-    }).slice(0, 10);
+    var shown = rankWords(q, onList, 10).map(function (w) { return [w.n, w.c]; });
     var chips = $("chips");
     chips.textContent = "";
+    if (shown.length || sugEdit) chips.appendChild(editChip(renderChips));
     shown.forEach(function (p) {
-      chips.appendChild(h("button", { class: "chip", type: "button", onclick: function () { addItem(p[0], p[1]); } },
-        h("span", { class: "dot", cc: colorOf(p[1]) }), p[0]));
+      if (sugEdit) {
+        chips.appendChild(h("button", { class: "chip delchip", type: "button", "aria-label": "Delete suggestion " + p[0], onclick: function () { hideWord(p[0]); renderChips(); } },
+          p[0], h("span", { class: "x", "aria-hidden": "true" }, "×")));
+      } else {
+        chips.appendChild(h("button", { class: "chip", type: "button", onclick: function () { addItem(p[0], p[1]); } },
+          h("span", { class: "dot", cc: colorOf(p[1]) }), p[0]));
+      }
     });
-    chips.hidden = !shown.length;
+    chips.hidden = !shown.length && !sugEdit;
   }
 
   /* ---- Theme: Auto follows the phone, Light and Dark override it ---- */
@@ -1637,7 +1868,7 @@ body { overflow-x: hidden; touch-action: pan-y; }
   function init() {
     initTheme();
     var sel = $("itemCat");
-    CATS.forEach(function (c) { sel.appendChild(h("option", { value: c[0] }, c[1])); });
+    fillAisleSelect();
     sel.value = "other";
 
     var d = new Date();
@@ -1659,8 +1890,8 @@ body { overflow-x: hidden; touch-action: pan-y; }
       input.focus();
     });
 
-    $("tabList").addEventListener("click", function () { tab = "list"; confirmDel = null; moveMode = false; render(); });
-    $("tabRecipes").addEventListener("click", function () { tab = "recipes"; confirmDel = null; moveMode = false; render(); });
+    $("tabList").addEventListener("click", function () { tab = "list"; confirmDel = null; moveMode = false; delMode = false; render(); });
+    $("tabRecipes").addEventListener("click", function () { tab = "recipes"; confirmDel = null; moveMode = false; delMode = false; render(); });
 
     $("toastUndo").addEventListener("click", doUndo);
 
