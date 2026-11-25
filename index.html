@@ -453,8 +453,19 @@ body { overflow-x: hidden; touch-action: pan-y; }
     ["meat", "Meat & fish"], ["cooked", "Cooked food"], ["pantry", "Pantry"], ["sauces", "Sauces & spices"], ["frozen", "Frozen"],
     ["drinks", "Drinks"], ["household", "Household"], ["other", "Other"]
   ];
+  var BASE_CATS = CATS.slice();
+  var BASE_LABEL = {};
+  BASE_CATS.forEach(function (c) { BASE_LABEL[c[0]] = c[1]; });
   var CAT_LABEL = {};
-  CATS.forEach(function (c) { CAT_LABEL[c[0]] = c[1]; });
+  /* your own aisles sit before "Other"; CATS and CAT_LABEL always hold the full set */
+  function syncCats(custom) {
+    var list = BASE_CATS.slice(0, -1).concat(custom.map(function (c) { return [c.id, c.name]; }), BASE_CATS.slice(-1));
+    CATS.length = 0;
+    list.forEach(function (c) { CATS.push(c); });
+    Object.keys(CAT_LABEL).forEach(function (k) { delete CAT_LABEL[k]; });
+    CATS.forEach(function (c) { CAT_LABEL[c[0]] = c[1]; });
+  }
+  syncCats([]);
 
   var GUESS = [
     ["frozen", ["frozen", "ice", "pizza", "fish finger"]],
@@ -633,11 +644,13 @@ body { overflow-x: hidden; touch-action: pan-y; }
   }
 
   function seed() {
+    syncCats([]);
     return {
       updatedAt: 0,
       known: [],
       hidden: [],
       names: {},
+      custom: [],
       colors: JSON.parse(JSON.stringify(DEF_AISLE)),
       rcats: defRcats(),
       recipes: [exampleRecipe()],
@@ -655,13 +668,17 @@ body { overflow-x: hidden; touch-action: pan-y; }
     var items = Array.isArray(d && d.items) ? d.items : [];
     var known = Array.isArray(d && d.known) ? d.known : [];
     var colors = {}, names = {};
-    CATS.forEach(function (c) {
+    var custom = (Array.isArray(d && d.custom) ? d.custom : []).filter(function (c) { return c && c.id && c.name && !BASE_LABEL[c.id]; }).slice(0, 30).map(function (c) {
+      return { id: String(c.id), name: String(c.name).slice(0, 30), color: COLORS.indexOf(c.color) !== -1 ? c.color : "blue" };
+    });
+    syncCats(custom);
+    BASE_CATS.forEach(function (c) {
       var n = d && d.names && d.names[c[0]];
       if (typeof n === "string" && n.trim()) names[c[0]] = n.trim().slice(0, 30);
     });
     CATS.forEach(function (c) {
       var v = d && d.colors && d.colors[c[0]];
-      colors[c[0]] = COLORS.indexOf(v) !== -1 ? v : DEF_AISLE[c[0]];
+      colors[c[0]] = COLORS.indexOf(v) !== -1 ? v : (DEF_AISLE[c[0]] || (custom.filter(function (x) { return x.id === c[0]; })[0] || {}).color || "gray");
     });
     var rcats = Array.isArray(d && d.rcats)
       ? d.rcats.filter(function (c) { return c && c.id && c.name; }).map(function (c) {
@@ -690,6 +707,7 @@ body { overflow-x: hidden; touch-action: pan-y; }
       recipes: recipes,
       colors: colors,
       names: names,
+      custom: custom,
       rcats: rcats,
       hidden: (Array.isArray(d && d.hidden) ? d.hidden : []).map(function (x) { return String(x).toLowerCase(); }).filter(Boolean).slice(0, 500),
       items: items.filter(function (i) { return i && i.name; }).map(function (i) {
@@ -1056,20 +1074,50 @@ body { overflow-x: hidden; touch-action: pan-y; }
     if (isB) { renderBackup(box); return; }
     if (isA) {
       CATS.forEach(function (c) {
-        var ainp = h("input", { type: "text", maxlength: "30", "aria-label": "Aisle name", autocomplete: "off", placeholder: CAT_LABEL[c[0]] });
+        var cu = state.custom.filter(function (x) { return x.id === c[0]; })[0];
+        var ainp = h("input", { type: "text", maxlength: "30", "aria-label": "Aisle name", autocomplete: "off", placeholder: cu ? "Aisle name" : BASE_LABEL[c[0]] });
         ainp.value = aisleName(c[0]);
         ainp.addEventListener("input", function () {
           var v = ainp.value.trim();
-          if (v && v !== CAT_LABEL[c[0]]) state.names[c[0]] = v; else delete state.names[c[0]];
+          if (cu) { if (v) { cu.name = v; CAT_LABEL[cu.id] = v; CATS.forEach(function (x) { if (x[0] === cu.id) x[1] = v; }); save(); } return; }
+          if (v && v !== BASE_LABEL[c[0]]) state.names[c[0]] = v; else delete state.names[c[0]];
           save();
         });
         ainp.addEventListener("blur", function () { if (!ainp.value.trim()) ainp.value = aisleName(c[0]); });
-        box.appendChild(h("div", { class: "crow" },
+        var kids = [
           h("div", { class: "nm1" }, h("span", { class: "dot", cc: colorOf(c[0]) }), ainp),
-          swatches(colorOf(c[0]), function (col) { state.colors[c[0]] = col; save(); render(); })));
+          swatches(colorOf(c[0]), function (col) { state.colors[c[0]] = col; if (cu) cu.color = col; save(); render(); })];
+        if (cu) {
+          kids.push(h("button", { class: "btn alt", type: "button", onclick: function () {
+            if (confirmCat === cu.id) {
+              state.items.forEach(function (i) { if (i.cat === cu.id) i.cat = "other"; });
+              state.recipes.forEach(function (r) { r.ings.forEach(function (i) { if (i.cat === cu.id) i.cat = "other"; }); });
+              state.known.forEach(function (k) { if (k.c === cu.id) k.c = "other"; });
+              state.custom = state.custom.filter(function (x) { return x.id !== cu.id; });
+              delete state.colors[cu.id];
+              syncCats(state.custom);
+              confirmCat = null;
+              save();
+            } else { confirmCat = cu.id; }
+            render();
+          } }, confirmCat === cu.id ? "Tap to delete" : "Delete"));
+        }
+        box.appendChild(h("div", { class: "crow" }, kids));
       });
+      box.appendChild(h("button", { class: "btn alt", type: "button", onclick: function () {
+        var id = "c" + uid();
+        state.custom.push({ id: id, name: "New aisle", color: "blue" });
+        state.colors[id] = "blue";
+        syncCats(state.custom);
+        save();
+        render();
+        setTimeout(function () {
+          var el = $("panel").querySelectorAll(".nm1 input");
+          for (var i = 0; i < el.length; i++) if (el[i].value === "New aisle") { el[i].focus(); el[i].select(); el[i].scrollIntoView({ block: "center" }); }
+        }, 0);
+      } }, "Add aisle"));
       box.appendChild(h("button", { class: "linkbtn", type: "button", onclick: function () {
-        CATS.forEach(function (c) { state.colors[c[0]] = DEF_AISLE[c[0]]; });
+        BASE_CATS.forEach(function (c) { state.colors[c[0]] = DEF_AISLE[c[0]]; });
         state.names = {};
         save(); render();
       } }, "Reset names and colours"));
@@ -1520,8 +1568,8 @@ body { overflow-x: hidden; touch-action: pan-y; }
     stepsIn.addEventListener("input", function () { autosize(stepsIn); });
     setTimeout(function () { autosize(txt); autosize(stepsIn); }, 0);
     var err = h("p", { class: "err", hidden: "" });
-    function fail(msg) { err.textContent = msg; err.hidden = false; }
-    var save1 = h("button", { class: "btn", type: "button", onclick: function () {
+    function fail(msg) { err.textContent = msg; err.hidden = false; return false; }
+    function doSave() {
       var nm = nameIn.value.trim().replace(/\s+/g, " ");
       var ings = parseIngs(txt.value, ed.cats);
       var rcOk = rcat(editing.rc) ? editing.rc : "";
@@ -1544,7 +1592,11 @@ body { overflow-x: hidden; touch-action: pan-y; }
       editing = null;
       save();
       render();
-    } }, "Save recipe");
+      return true;
+    }
+    ed.doSave = doSave;
+    ed.isBlank = function () { return !nameIn.value.trim() && !txt.value.trim() && !stepsIn.value.trim() && !ed.img; };
+    var save1 = h("button", { class: "btn", type: "button", onclick: doSave }, "Save recipe");
     var cancel = h("button", { class: "btn alt", type: "button", onclick: function () {
       if (ed.img && ed.img !== ed.origImg) dropAsset(ed.img);
       editing = null;
@@ -1890,8 +1942,25 @@ body { overflow-x: hidden; touch-action: pan-y; }
       input.focus();
     });
 
-    $("tabList").addEventListener("click", function () { tab = "list"; confirmDel = null; moveMode = false; delMode = false; render(); });
-    $("tabRecipes").addEventListener("click", function () { tab = "recipes"; confirmDel = null; moveMode = false; delMode = false; render(); });
+    /* Tapping List or Recipes closes whatever is open (settings, edit modes, cooking, the recipe editor) and keeps the changes */
+    function goTab(t) {
+      if (editing) {
+        if (editing.doSave && editing.isBlank && !editing.isBlank()) {
+          if (!editing.doSave()) return;
+        } else {
+          if (editing.img && editing.img !== editing.origImg) dropAsset(editing.img);
+          editing = null;
+        }
+      }
+      if (cooking) { cooking = null; wakeOn = false; setWake(false); }
+      tab = t;
+      settings = null; confirmCat = null; confirmDel = null; pendingImport = null; backupMsg = null;
+      moveMode = false; delMode = false; sugEdit = false;
+      render();
+      window.scrollTo(0, 0);
+    }
+    $("tabList").addEventListener("click", function () { goTab("list"); });
+    $("tabRecipes").addEventListener("click", function () { goTab("recipes"); });
 
     $("toastUndo").addEventListener("click", doUndo);
 
