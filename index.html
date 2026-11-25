@@ -513,7 +513,7 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
   var state = null;
   var ref = null, dirty = false, writing = false, timer = null, autoCat = true;
   var tab = "list", editing = null, open = {}, confirmDel = null;
-  var sugEdit = false;
+  var sugEdit = false, lastToggle = 0;
   var settings = null, rfilter = "all", confirmCat = null, moveMode = false, delMode = false;
   var cooking = null, cookIdx = 0, showIngs = false, wakeOn = false, wake = null;
   var undoTimer = null, undoSnap = null;
@@ -1632,6 +1632,9 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
     chev.innerHTML = CHEV;
     var meta = r.ings.length + (r.ings.length === 1 ? " ingredient" : " ingredients") + (onN ? " · " + onN + " on your list" : "");
     var head = h("button", { class: "rhead", type: "button", "aria-expanded": isOpen ? "true" : "false", onclick: function () {
+      var now = Date.now();
+      if (now - lastToggle < 450) return;
+      lastToggle = now;
       open[r.id] = !open[r.id];
       confirmDel = null;
       render();
@@ -1782,7 +1785,16 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
     return r;
   }
 
+  /* Redraws keep the page exactly where it was, so a quick second tap never makes the screen jump */
   function render() {
+    var y = window.pageYOffset || 0;
+    var de = document.documentElement;
+    document.body.style.minHeight = Math.max(de.scrollHeight, y + window.innerHeight) + "px";
+    draw();
+    if ((window.pageYOffset || 0) !== y) window.scrollTo(0, y);
+    document.body.style.minHeight = "";
+  }
+  function draw() {
     fillAisleSelect();
     var onList = tab === "list";
     var panelOn = !!settings;
