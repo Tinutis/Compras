@@ -558,7 +558,7 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
   var ref = null, dirty = false, writing = false, timer = null, autoCat = true;
   var rform = null, rmonth = null;
   var tab = "list", editing = null, open = {}, confirmDel = null;
-  var sugEdit = false, lastToggle = 0;
+  var sugEdit = false, lastToggle = 0, rfilterX = 0;
   var settings = null, rfilter = "all", confirmCat = null, moveMode = false, delMode = false;
   var cooking = null, cookIdx = 0, showIngs = false, wakeOn = false, wake = null;
   var undoTimer = null, undoSnap = null;
@@ -2049,6 +2049,8 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
     var n = state.recipes.length;
     $("sub").textContent = n + (n === 1 ? " recipe" : " recipes");
     var box = $("recipes");
+    var oldF = box.querySelector(".filters");
+    var keepX = oldF ? oldF.scrollLeft : rfilterX;
     box.textContent = "";
     if (editing) {
       box.appendChild(editorEl());
@@ -2068,6 +2070,8 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
     sortedRcats().forEach(function (c) { fr.appendChild(fchip(c.name, c.id, c.color)); });
     fr.appendChild(h("button", { class: "fchip edit", type: "button", onclick: function () { settings = "rcats"; render(); } }, "Edit categories"));
     box.appendChild(fr);
+    fr.scrollLeft = keepX;
+    fr.addEventListener("scroll", function () { rfilterX = fr.scrollLeft; });
     var shown = state.recipes.filter(function (r) { return rfilter === "all" || rcsOf(r).indexOf(rfilter) !== -1; }).sort(byName);
     if (!shown.length) {
       box.appendChild(h("div", { class: "empty" },
