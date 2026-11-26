@@ -258,6 +258,13 @@ h1 {
   padding: 14px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;
 }
 .editor label { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.editor input[type="date"] {
+  -webkit-appearance: none; appearance: none;
+  display: block; width: 200px; max-width: 100%; min-width: 0; height: 50px;
+  background: var(--bg); color: var(--ink); text-align: left; line-height: 1.2;
+}
+.editor input[type="date"]::-webkit-date-and-time-value { text-align: left; min-height: 1.2em; }
+.editor input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.6; }
 .editor input, .editor textarea {
   width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 12px;
   padding: 12px 14px; font-size: 16px; font-family: var(--font-body);
@@ -289,7 +296,8 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
 }
 .pill .dot { margin: 0; width: 8px; height: 8px; }
 .rtitle .prow { display: block; margin-top: 6px; }
-.rtitle .pill { font-size: 12px; font-weight: 600; color: var(--ink); }
+.rtitle .pill { font-size: 12px; font-weight: 600; color: var(--ink); margin: 0 6px 4px 0; }
+.wrapchips { flex-wrap: wrap; overflow: visible; }
 
 .filters { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin-bottom: 14px; padding-bottom: 2px; }
 .filters::-webkit-scrollbar { display: none; }
@@ -331,6 +339,32 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
 }
 .tabbar button[aria-selected="true"] { background: var(--accent-soft); color: var(--ink); }
 .tabbar svg { width: 20px; height: 20px; flex: none; }
+.rnav { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.rnav strong { flex: 1; text-align: center; font-family: var(--font-display); font-size: 20px; }
+.rnav .btn { width: 44px; padding: 0; flex: none; }
+.rcard { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+.rcard h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.rbig { font-family: var(--font-display); font-size: 34px; font-weight: 700; line-height: 1.1; overflow-wrap: anywhere; }
+.rsmall { font-size: 14px; color: var(--muted); margin-top: 4px; }
+.sbar { margin-bottom: 10px; }
+.sbar:last-child { margin-bottom: 0; }
+.sbar .l { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; margin-bottom: 4px; }
+.sbar .l span:first-child { min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+.sbar .l span:last-child { flex: none; color: var(--muted); }
+.sbar .t { height: 10px; border-radius: 6px; background: var(--bg); overflow: hidden; }
+.sbar .t i { display: block; height: 100%; border-radius: 6px; background: var(--cc, var(--accent)); }
+.trend { display: flex; align-items: flex-end; gap: 6px; height: 120px; }
+.trend button { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; border: 0; background: transparent; padding: 0; color: var(--muted); font-size: 11px; }
+.trend button i { display: block; width: 100%; max-width: 38px; border-radius: 6px 6px 2px 2px; background: var(--line); min-height: 3px; }
+.trend button[aria-pressed="true"] i { background: var(--accent); }
+.trend button[aria-pressed="true"] { color: var(--ink); font-weight: 700; }
+.rrow { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; background: transparent; padding: 10px 0; border-top: 1px solid var(--line); }
+.rrow:first-of-type { border-top: 0; }
+.rrow .m { flex: 1; min-width: 0; }
+.rrow .m strong { display: block; overflow-wrap: anywhere; }
+.rrow .m span { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.rrow .a { flex: none; font-weight: 700; }
+.shopchips { display: flex; flex-wrap: wrap; gap: 8px; }
 .cookctl { display: flex; gap: 10px; }
 .cookctl .btn { flex: 1; height: 56px; font-size: 17px; }
 .toast {
@@ -359,6 +393,10 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
 .sugg { min-height: 44px; align-items: center; }
 .sugg .sh { margin: 0; white-space: nowrap; }
 .acats { display: flex; flex-direction: column; }
+.acats .altin { margin: 0 0 8px; padding: 10px 12px; font-size: 16px; }
+.iname .alts { display: block; font-size: 13px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+.altbtn { display: inline-block; min-height: 30px; margin: 4px 6px 0 0; padding: 3px 11px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--accent); font-size: 13px; font-weight: 600; }
+.altbtn.on { opacity: 0.65; color: var(--muted); font-weight: 500; }
 .acats label { margin-bottom: 4px; }
 .arow { display: flex; align-items: center; gap: 10px; min-height: 52px; border-top: 1px solid var(--line); }
 .arow .dot { margin: 0; }
@@ -417,11 +455,12 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
       <button type="button" class="themebtn" id="themeBtn"></button>
     </span>
   </div>
-  <h1>Groceries</h1>
+  <h1 class="vh">Groceries</h1>
   <p class="sub" id="sub"></p>
   <div id="note"></div>
   <div id="list"></div>
   <div id="recipes" hidden></div>
+  <div id="receipts" hidden></div>
   <div id="panel" class="panel" hidden></div>
   <div id="cook" hidden></div>
 </div>
@@ -447,6 +486,10 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
       <button type="button" role="tab" id="tabRecipes" aria-selected="false">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H16v13H5.5A1.5 1.5 0 0 0 4 17.5v-13Z"/><path d="M4 17.5A1.5 1.5 0 0 0 5.5 19H16"/></svg>
         Recipes
+      </button>
+      <button type="button" role="tab" id="tabReceipts" aria-selected="false">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 2.5h10v15l-2-1.3-1.5 1.3L10 16.2 8.5 17.5 7 16.2l-2 1.3v-15Z"/><path d="M7.5 6.5h5M7.5 9.5h5"/></svg>
+        Receipts
       </button>
     </div>
   </div>
@@ -497,6 +540,7 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
     ["Salt", "sauces"], ["Soy sauce", "sauces"]
   ];
 
+  var CURRENCIES = ["EUR", "USD", "GBP", "CHF", "SEK", "NOK", "DKK", "PLN", "CZK", "MXN", "CAD", "AUD", "JPY"];
   var COLORS = ["red", "orange", "amber", "lime", "green", "teal", "blue", "indigo", "purple", "pink", "gray"];
   var DEF_AISLE = { produce: "green", bakery: "amber", dairy: "blue", meat: "red", cooked: "pink", pantry: "orange", sauces: "lime", frozen: "teal", drinks: "indigo", household: "purple", other: "gray" };
   function defRcats() {
@@ -512,6 +556,7 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
 
   var state = null;
   var ref = null, dirty = false, writing = false, timer = null, autoCat = true;
+  var rform = null, rmonth = null;
   var tab = "list", editing = null, open = {}, confirmDel = null;
   var sugEdit = false, lastToggle = 0;
   var settings = null, rfilter = "all", confirmCat = null, moveMode = false, delMode = false;
@@ -633,7 +678,7 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
 
   function exampleRecipe() {
     return {
-      id: uid(), name: "Tomato pasta", rc: "veg", ex: true,
+      id: uid(), name: "Tomato pasta", rc: "veg", rcs: ["veg"], ex: true,
       steps: [
         "Boil salted water and cook the pasta until just tender.",
         "Fry the garlic in olive oil, add the chopped tomatoes and simmer for 10 minutes.",
@@ -658,6 +703,9 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
       hidden: [],
       names: {},
       custom: [],
+      receipts: [],
+      shops: [],
+      currency: "EUR",
       colors: JSON.parse(JSON.stringify(DEF_AISLE)),
       rcats: defRcats(),
       recipes: [exampleRecipe()],
@@ -679,6 +727,19 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
       return { id: String(c.id), name: String(c.name).slice(0, 30), color: COLORS.indexOf(c.color) !== -1 ? c.color : "blue" };
     });
     syncCats(custom);
+    var receipts = (Array.isArray(d && d.receipts) ? d.receipts : []).filter(function (r) {
+      return r && /^\d{4}-\d{2}-\d{2}$/.test(r.date) && isFinite(+r.amount) && +r.amount > 0 && String(r.shop || "").trim();
+    }).slice(0, 5000).map(function (r) {
+      var o = { id: r.id ? String(r.id) : uid(), date: r.date, shop: String(r.shop).trim().slice(0, 40), amount: Math.round(+r.amount * 100) / 100 };
+      if (r.note && String(r.note).trim()) o.note = String(r.note).trim().slice(0, 80);
+      return o;
+    });
+    var shops = [];
+    (Array.isArray(d && d.shops) ? d.shops : []).concat(receipts.map(function (r) { return r.shop; })).forEach(function (n) {
+      n = String(n).trim().slice(0, 40);
+      if (n && !shops.some(function (x) { return x.toLowerCase() === n.toLowerCase(); })) shops.push(n);
+    });
+    shops = shops.slice(0, 200);
     BASE_CATS.forEach(function (c) {
       var n = d && d.names && d.names[c[0]];
       if (typeof n === "string" && n.trim()) names[c[0]] = n.trim().slice(0, 30);
@@ -697,13 +758,17 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
           var o = {
             id: r.id || uid(),
             name: String(r.name),
-            rc: rcats.some(function (c) { return c.id === r.rc; }) ? r.rc : "",
+            rcs: (Array.isArray(r.rcs) ? r.rcs : (r.rc ? [r.rc] : [])).map(String).filter(function (id, i, a) { return a.indexOf(id) === i && rcats.some(function (c) { return c.id === id; }); }),
             steps: (Array.isArray(r.steps) ? r.steps : []).map(String).filter(Boolean),
             img: typeof r.img === "string" && /^[0-9a-f]{32}$/.test(r.img) ? r.img : "",
             ings: (Array.isArray(r.ings) ? r.ings : []).filter(function (i) { return i && i.name; }).map(function (i) {
-              return { name: String(i.name), qty: Math.max(1, i.qty | 0 || 1), cat: CAT_LABEL[i.cat] ? i.cat : "other" };
+              var oi = { name: String(i.name), qty: Math.max(1, i.qty | 0 || 1), cat: CAT_LABEL[i.cat] ? i.cat : "other" };
+              var al = parseAlts(i.alts, oi.name);
+              if (al.length) oi.alts = al;
+              return oi;
             })
           };
+          o.rc = o.rcs[0] || "";
           if (r.ex) o.ex = true;
           if (r.ex && !o.steps.length) o.steps = exampleRecipe().steps;
           return o;
@@ -715,6 +780,9 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
       colors: colors,
       names: names,
       custom: custom,
+      receipts: receipts,
+      shops: shops,
+      currency: CURRENCIES.indexOf(d && d.currency) !== -1 ? d.currency : "EUR",
       rcats: rcats,
       hidden: (Array.isArray(d && d.hidden) ? d.hidden : []).map(function (x) { return String(x).toLowerCase(); }).filter(Boolean).slice(0, 500),
       items: items.filter(function (i) { return i && i.name; }).map(function (i) {
@@ -889,6 +957,14 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
     return it ? (it.done ? "cart" : "list") : null;
   }
 
+  /* put a substitute on the list instead of the original ingredient */
+  function addAlt(r, ing, alt) {
+    if (status(alt)) return;
+    state.items.push({ id: uid(), name: alt, qty: ing.qty, cat: guessCat(alt), done: false, src: r.name });
+    bump(alt, null);
+    save();
+    render();
+  }
   function addRecipe(r, only) {
     var added = 0;
     r.ings.forEach(function (ing, idx) {
@@ -902,13 +978,26 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
     render();
   }
 
-  function parseIngs(text, cats) {
+  /* substitutes for an ingredient: "olive oil, margarine" -> ["olive oil", "margarine"] */
+  function parseAlts(v, main) {
+    var seen = {}, out = [];
+    seen[String(main || "").toLowerCase()] = 1;
+    (Array.isArray(v) ? v : String(v || "").split(/[,;\n]/)).forEach(function (x) {
+      x = String(x).trim().replace(/\s+/g, " ").slice(0, 40);
+      if (x && !seen[x.toLowerCase()]) { seen[x.toLowerCase()] = 1; out.push(x); }
+    });
+    return out.slice(0, 5);
+  }
+  function parseIngs(text, cats, alts) {
     return text.split("\n").map(function (l) { return l.trim(); }).filter(Boolean).map(function (l) {
       var m = l.match(/^(\d{1,3})\s*(?:x|×)?\s+(.+)$/i);
       var qty = 1, name = l;
       if (m) { qty = parseInt(m[1], 10) || 1; name = m[2]; }
       name = name.trim().replace(/\s+/g, " ");
-      return { name: name, qty: qty, cat: (cats && CAT_LABEL[cats[name.toLowerCase()]] && cats[name.toLowerCase()]) || guessCat(name) };
+      var o = { name: name, qty: qty, cat: (cats && CAT_LABEL[cats[name.toLowerCase()]] && cats[name.toLowerCase()]) || guessCat(name) };
+      var a = parseAlts(alts && alts[name.toLowerCase()], name);
+      if (a.length) o.alts = a;
+      return o;
     }).filter(function (i) { return i.name; });
   }
 
@@ -924,6 +1013,15 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
     sel.value = cur;
   }
   function colorOf(aisle) { return (state.colors && state.colors[aisle]) || "gray"; }
+  /* a recipe can have several categories; r.rc keeps the first one for older copies of the app */
+  function rcsOf(r) {
+    var raw = Array.isArray(r.rcs) ? r.rcs : (r.rc ? [r.rc] : []);
+    return raw.filter(function (id, i) { return rcat(id) && raw.indexOf(id) === i; });
+  }
+  function byName(a, b) { return a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true }); }
+  function sortedRcats() {
+    return state.rcats.slice().sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { sensitivity: "base" }); });
+  }
   function rcat(id) { return state.rcats.filter(function (c) { return c.id === id; })[0] || null; }
 
   function swatches(cur, onPick) {
@@ -1071,12 +1169,14 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
     var isA = settings === "aisles";
     var isB = settings === "backup";
     var isS = settings === "sync";
-    $("sub").textContent = isS ? "Keep the same list on every device." : isB ? "Move your data to another device or keep a copy." : isA ? "Rename or recolour each aisle." : "Rename, recolour, add or remove categories.";
+    var isP = settings === "shops";
+    $("sub").textContent = isP ? "Add, rename or remove your shops." : isS ? "Keep the same list on every device." : isB ? "Move your data to another device or keep a copy." : isA ? "Rename or recolour each aisle." : "Rename, recolour, add or remove categories.";
     var box = $("panel");
     box.textContent = "";
     box.appendChild(h("div", { class: "head" },
-      h("h2", { class: "ptitle" }, isS ? "Cloud sync" : isB ? "Backup and restore" : isA ? "Aisles" : "Recipe categories"),
+      h("h2", { class: "ptitle" }, isP ? "Shops" : isS ? "Cloud sync" : isB ? "Backup and restore" : isA ? "Aisles" : "Recipe categories"),
       h("button", { class: "btn", type: "button", onclick: function () { settings = null; confirmCat = null; pendingImport = null; backupMsg = null; render(); } }, "Done")));
+    if (isP) { renderShopsPanel(box); return; }
     if (isS && syncPanel) { syncPanel(box); return; }
     if (isB) { renderBackup(box); return; }
     if (isA) {
@@ -1130,7 +1230,7 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
       } }, "Reset names and colours"));
       return;
     }
-    state.rcats.forEach(function (c) {
+    sortedRcats().forEach(function (c) {
       var inp = h("input", { type: "text", maxlength: "30", "aria-label": "Category name", autocomplete: "off" });
       inp.value = c.name;
       inp.addEventListener("input", function () {
@@ -1140,7 +1240,7 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
       var del = h("button", { class: "btn alt", type: "button", onclick: function () {
         if (confirmCat === c.id) {
           state.rcats = state.rcats.filter(function (x) { return x.id !== c.id; });
-          state.recipes.forEach(function (r) { if (r.rc === c.id) r.rc = ""; });
+          state.recipes.forEach(function (r) { r.rcs = rcsOf(r).filter(function (x) { return x !== c.id; }); r.rc = r.rcs[0] || ""; });
           if (rfilter === c.id) rfilter = "all";
           confirmCat = null;
           save();
@@ -1160,7 +1260,8 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
       render();
       setTimeout(function () {
         var inputs = $("panel").querySelectorAll(".nm1 input");
-        var last = inputs[inputs.length - 1];
+        var last = null;
+        for (var i = 0; i < inputs.length; i++) if (inputs[i].value === "New category") last = inputs[i];
         if (last) { last.focus(); last.select(); }
       }, 0);
     } }, "Add category"));
@@ -1258,7 +1359,7 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
       r.ings.forEach(function (ing) {
         rows.appendChild(h("div", { class: "ing" },
           h("span", { class: "dot", cc: colorOf(ing.cat) }),
-          h("span", { class: "iname" }, ing.name),
+          h("span", { class: "iname" }, ing.name, ing.alts && ing.alts.length ? h("span", { class: "alts" }, "or " + ing.alts.join(", ")) : null),
           ing.qty > 1 ? h("span", { class: "iq" }, "×" + ing.qty) : null));
       });
       box.appendChild(rows);
@@ -1288,11 +1389,21 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
     var nameIn = h("input", { type: "text", id: "rName", maxlength: "80", placeholder: "Tomato pasta", autocapitalize: "sentences", autocomplete: "off" });
     nameIn.value = editing.name;
     nameIn.addEventListener("input", function () { editing.name = nameIn.value; });
-    var catSel = h("select", { id: "rCat" },
-      h("option", { value: "" }, "No category"),
-      state.rcats.map(function (c) { return h("option", { value: c.id }, c.name); }));
-    catSel.value = editing.rc || "";
-    catSel.addEventListener("change", function () { editing.rc = catSel.value; });
+    var catSel = h("div", { class: "chips wrapchips", id: "rCat", role: "group", "aria-label": "Categories" });
+    function drawCats() {
+      catSel.textContent = "";
+      var list = sortedRcats();
+      if (!list.length) catSel.appendChild(h("span", { class: "hint sh" }, "No categories yet. Add some with Edit categories."));
+      list.forEach(function (c) {
+        var on = editing.rcs.indexOf(c.id) !== -1;
+        catSel.appendChild(h("button", { class: "fchip", type: "button", "aria-pressed": on ? "true" : "false", onclick: function () {
+          var i = editing.rcs.indexOf(c.id);
+          if (i === -1) editing.rcs.push(c.id); else editing.rcs.splice(i, 1);
+          drawCats();
+        } }, h("span", { class: "dot", cc: c.color }), c.name));
+      });
+    }
+    drawCats();
     var txt = h("textarea", { id: "rIngs", placeholder: "4 tomatoes\n2 garlic cloves\nOlive oil", autocapitalize: "sentences" });
     txt.value = editing.text;
     txt.addEventListener("input", function () { editing.text = txt.value; });
@@ -1381,7 +1492,7 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
         rows.push(ing);
       });
       if (!rows.length) return;
-      catBox.appendChild(h("label", null, "Aisle for each ingredient"));
+      catBox.appendChild(h("label", null, "Aisle and substitutes for each ingredient"));
       rows.forEach(function (ing) {
         var k = ing.name.toLowerCase();
         var dot = h("span", { class: "dot", cc: colorOf(ing.cat) });
@@ -1392,7 +1503,12 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
           editing.cats[k] = sel.value;
           dot.style.setProperty("--cc", "var(--c-" + colorOf(sel.value) + ")");
         });
+        var altIn = h("input", { type: "text", class: "altin", maxlength: "120", autocomplete: "off", autocapitalize: "none",
+          "aria-label": "Substitutes for " + ing.name, placeholder: "Substitutes, e.g. olive oil, margarine" });
+        altIn.value = (editing.alts && editing.alts[k]) || "";
+        altIn.addEventListener("input", function () { editing.alts[k] = altIn.value; });
         catBox.appendChild(h("div", { class: "arow" }, dot, h("span", { class: "iname" }, ing.name), sel));
+        catBox.appendChild(altIn);
       });
     }
     txt.addEventListener("input", renderCats);
@@ -1578,8 +1694,8 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
     function fail(msg) { err.textContent = msg; err.hidden = false; return false; }
     function doSave() {
       var nm = nameIn.value.trim().replace(/\s+/g, " ");
-      var ings = parseIngs(txt.value, ed.cats);
-      var rcOk = rcat(editing.rc) ? editing.rc : "";
+      var ings = parseIngs(txt.value, ed.cats, ed.alts);
+      var rcsOk = editing.rcs.filter(function (id) { return rcat(id); });
       var steps = stepsIn.value.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
       if (!nm) return fail("Give the recipe a name.");
       if (!ings.length) return fail("Add at least one ingredient.");
@@ -1590,9 +1706,9 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
       if (ed.origImg && ed.origImg !== ed.img) dropAsset(ed.origImg);
       if (editing.id) {
         var r = state.recipes.filter(function (x) { return x.id === editing.id; })[0];
-        if (r) { r.name = nm; r.ings = ings; r.rc = rcOk; r.steps = steps; r.img = ed.img || ""; delete r.ex; }
+        if (r) { r.name = nm; r.ings = ings; r.rcs = rcsOk; r.rc = rcsOk[0] || ""; r.steps = steps; r.img = ed.img || ""; delete r.ex; }
       } else {
-        var nr = { id: uid(), name: nm, rc: rcOk, steps: steps, ings: ings, img: ed.img || "" };
+        var nr = { id: uid(), name: nm, rcs: rcsOk, rc: rcsOk[0] || "", steps: steps, ings: ings, img: ed.img || "" };
         state.recipes.unshift(nr);
         open[nr.id] = true;
       }
@@ -1614,7 +1730,7 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
       assetsApi ? h("label", { for: "rPhotoFile" }, "Photo") : null,
       assetsApi ? photoBox : null,
       assetsApi ? fileIn : null,
-      h("label", { for: "rCat" }, "Category"), catSel,
+      h("label", null, "Categories (pick any)"), catSel,
       h("label", { for: "rIngs" }, "Ingredients"), txt, sugg,
       h("p", { class: "hint" }, "One ingredient per line. A number at the start sets how many to buy, like 4 tomatoes. Aisles are filled in for you and you can change them below."),
       catBox,
@@ -1640,7 +1756,9 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
       render();
     } }, r.img ? h("img", { class: "rthumb", alt: "", src: imgSrc(r.img), onerror: function (e) { e.target.style.display = "none"; } }) : null,
     h("span", { class: "rtitle" }, h("strong", null, r.name), h("span", null, meta),
-      rcat(r.rc) ? h("span", { class: "prow" }, h("span", { class: "pill", cc: rcat(r.rc).color }, h("span", { class: "dot" }), rcat(r.rc).name)) : null), chev);
+      rcsOf(r).length ? h("span", { class: "prow" }, rcsOf(r).map(function (id) { return rcat(id); }).sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { sensitivity: "base" }); }).map(function (c) {
+        return h("span", { class: "pill", cc: c.color }, h("span", { class: "dot" }), c.name);
+      })) : null), chev);
     var el = h("div", { class: "recipe" + (isOpen ? " open" : "") }, head);
     if (!isOpen) return el;
 
@@ -1654,7 +1772,12 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
       else right = h("button", { class: "mini", type: "button", "aria-label": "Add " + ing.name + " to list", onclick: function () { addRecipe(r, idx); } }, "+ Add");
       body.appendChild(h("div", { class: "ing" },
         h("span", { class: "dot", cc: colorOf(ing.cat) }),
-        h("span", { class: "iname" }, ing.name),
+        h("span", { class: "iname" }, ing.name,
+          ing.alts && ing.alts.length ? h("span", { class: "alts" }, h("span", { class: "or" }, "or "), ing.alts.map(function (a) {
+            return status(a)
+              ? h("span", { class: "altbtn on" }, a + (status(a) === "cart" ? " (in cart)" : " (on list)"))
+              : h("button", { class: "altbtn", type: "button", "aria-label": "Add " + a + " to list instead of " + ing.name, onclick: function () { addAlt(r, ing, a); } }, "+ " + a);
+          })) : null),
         ing.qty > 1 ? h("span", { class: "iq" }, "×" + ing.qty) : null,
         right));
     });
@@ -1664,7 +1787,7 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
       missing ? "Add " + missing + " to list" : "Nothing left to add");
     if (!missing) addAll.disabled = true;
     var edit = h("button", { class: "btn alt", type: "button", onclick: function () {
-      editing = { id: r.id, name: r.name, text: ingsText(r), rc: r.rc || "", steps: (r.steps || []).join("\n"), img: r.img || "", origImg: r.img || "", cats: (function () { var m = {}; r.ings.forEach(function (i) { m[i.name.toLowerCase()] = i.cat; }); return m; })() };
+      editing = { id: r.id, name: r.name, text: ingsText(r), rcs: rcsOf(r), steps: (r.steps || []).join("\n"), img: r.img || "", origImg: r.img || "", cats: (function () { var m = {}; r.ings.forEach(function (i) { m[i.name.toLowerCase()] = i.cat; }); return m; })(), alts: (function () { var m = {}; r.ings.forEach(function (i) { if (i.alts) m[i.name.toLowerCase()] = i.alts.join(", "); }); return m; })() };
       render();
     } }, "Edit");
     var del = h("button", { class: "btn alt", type: "button", onclick: function () {
@@ -1688,6 +1811,239 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
     return el;
   }
 
+
+  /* ---- Receipts and monthly spending ---- */
+  function money(n) {
+    try { return new Intl.NumberFormat(undefined, { style: "currency", currency: state.currency || "EUR" }).format(n); }
+    catch (e) { return (Math.round(n * 100) / 100).toFixed(2) + " " + (state.currency || ""); }
+  }
+  function p2(n) { return (n < 10 ? "0" : "") + n; }
+  function todayStr() { var d = new Date(); return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()); }
+  function monthKey(date) { return date.slice(0, 7); }
+  function shiftMonth(key, by) {
+    var y = +key.slice(0, 4), m = +key.slice(5, 7) - 1 + by;
+    y += Math.floor(m / 12); m = ((m % 12) + 12) % 12;
+    return y + "-" + p2(m + 1);
+  }
+  function monthName(key, short) {
+    var d = new Date(+key.slice(0, 4), +key.slice(5, 7) - 1, 1);
+    try { return d.toLocaleDateString(undefined, short ? { month: "short" } : { month: "long", year: "numeric" }); }
+    catch (e) { return key; }
+  }
+  function dayLabel(date) {
+    var d = new Date(+date.slice(0, 4), +date.slice(5, 7) - 1, +date.slice(8, 10));
+    try { return d.toLocaleDateString(undefined, { day: "numeric", month: "short" }); } catch (e) { return date; }
+  }
+  function monthTotal(key) {
+    return state.receipts.reduce(function (t, r) { return monthKey(r.date) === key ? t + r.amount : t; }, 0);
+  }
+  function shopsByUse() {
+    var cnt = {};
+    state.receipts.forEach(function (r) { cnt[r.shop.toLowerCase()] = (cnt[r.shop.toLowerCase()] || 0) + 1; });
+    return state.shops.slice().sort(function (a, b) {
+      return (cnt[b.toLowerCase()] || 0) - (cnt[a.toLowerCase()] || 0) || a.localeCompare(b, undefined, { sensitivity: "base" });
+    });
+  }
+  function addShopName(name) {
+    name = name.trim().slice(0, 40);
+    if (!name) return "";
+    var low = name.toLowerCase();
+    var found = state.shops.filter(function (x) { return x.toLowerCase() === low; })[0];
+    if (found) return found;
+    state.shops.push(name);
+    return name;
+  }
+
+  function renderShopsPanel(box) {
+    box.appendChild(h("div", { class: "crow" },
+      h("div", { class: "nm1" }, h("strong", null, "Currency")),
+      (function () {
+        var sel = h("select", { "aria-label": "Currency" }, CURRENCIES.map(function (c) { return h("option", { value: c }, c); }));
+        sel.value = state.currency || "EUR";
+        sel.addEventListener("change", function () { state.currency = sel.value; save(); });
+        return sel;
+      })()));
+    if (!state.shops.length) box.appendChild(h("p", { class: "hint" }, "No shops yet. Add one below, or type a new name when you add a receipt."));
+    state.shops.slice().forEach(function (name) {
+      var inp = h("input", { type: "text", maxlength: "40", "aria-label": "Shop name", autocomplete: "off" });
+      inp.value = name;
+      var cur = name;
+      inp.addEventListener("input", function () {
+        var v = inp.value.trim();
+        if (!v) return;
+        var i = state.shops.indexOf(cur);
+        if (i === -1) return;
+        state.shops[i] = v;
+        state.receipts.forEach(function (r) { if (r.shop === cur) r.shop = v; });
+        cur = v;
+        save();
+      });
+      inp.addEventListener("blur", function () { if (!inp.value.trim()) inp.value = cur; });
+      var n = state.receipts.filter(function (r) { return r.shop === name; }).length;
+      box.appendChild(h("div", { class: "crow" },
+        h("div", { class: "nm1" }, inp),
+        h("button", { class: "btn alt", type: "button", onclick: function () {
+          if (confirmCat === "shop:" + cur) {
+            state.shops = state.shops.filter(function (x) { return x !== cur; });
+            confirmCat = null;
+            save();
+          } else confirmCat = "shop:" + cur;
+          render();
+        } }, confirmCat === "shop:" + name ? (n ? "Tap to delete (keeps " + n + " receipt" + (n === 1 ? "" : "s") + ")" : "Tap to delete") : "Delete")));
+    });
+    box.appendChild(h("button", { class: "btn alt", type: "button", onclick: function () {
+      var name = "New shop", k = 1;
+      while (state.shops.some(function (x) { return x.toLowerCase() === name.toLowerCase(); })) name = "New shop " + (++k);
+      state.shops.push(name);
+      save();
+      render();
+      setTimeout(function () {
+        var el = $("panel").querySelectorAll(".nm1 input");
+        for (var i = 0; i < el.length; i++) if (el[i].value === name) { el[i].focus(); el[i].select(); el[i].scrollIntoView({ block: "center" }); }
+      }, 0);
+    } }, "Add shop"));
+  }
+
+  function receiptForm() {
+    var f = rform;
+    var dateIn = h("input", { type: "date", id: "rcDate", "aria-label": "Date" });
+    dateIn.value = f.date;
+    dateIn.addEventListener("input", function () { f.date = dateIn.value; });
+    var shopIn = h("input", { type: "text", id: "rcShop", maxlength: "40", placeholder: "Shop name", autocomplete: "off", autocapitalize: "words" });
+    shopIn.value = f.shop;
+    var chips = h("div", { class: "shopchips" });
+    function drawChips() {
+      chips.textContent = "";
+      var q = shopIn.value.trim().toLowerCase();
+      shopsByUse().filter(function (n) { return !q || n.toLowerCase().indexOf(q) !== -1; }).slice(0, 12).forEach(function (n) {
+        chips.appendChild(h("button", { class: "fchip", type: "button", "aria-pressed": n.toLowerCase() === q ? "true" : "false",
+          onclick: function () { shopIn.value = n; f.shop = n; drawChips(); } }, n));
+      });
+    }
+    shopIn.addEventListener("input", function () { f.shop = shopIn.value; drawChips(); });
+    drawChips();
+    var amtIn = h("input", { type: "text", id: "rcAmt", inputmode: "decimal", placeholder: "0.00", autocomplete: "off" });
+    amtIn.value = f.amount;
+    amtIn.addEventListener("input", function () { f.amount = amtIn.value; });
+    var noteIn = h("input", { type: "text", id: "rcNote", maxlength: "80", placeholder: "Optional", autocomplete: "off" });
+    noteIn.value = f.note;
+    noteIn.addEventListener("input", function () { f.note = noteIn.value; });
+    var err = h("p", { class: "err", hidden: true });
+    function fail(m) { err.textContent = m; err.hidden = false; }
+    var del = null;
+    if (f.id) {
+      del = h("button", { class: "btn alt", type: "button", onclick: function () {
+        if (!f.confirm) { f.confirm = true; del.textContent = "Tap to delete"; return; }
+        state.receipts = state.receipts.filter(function (r) { return r.id !== f.id; });
+        rform = null;
+        save(); render();
+      } }, "Delete");
+    }
+    return h("div", { class: "editor" },
+      h("label", { for: "rcAmt" }, "Amount (" + (state.currency || "EUR") + ")"), amtIn,
+      h("label", { for: "rcShop" }, "Shop"), shopIn, chips,
+      h("label", { for: "rcDate" }, "Date"), dateIn,
+      h("label", { for: "rcNote" }, "Note"), noteIn,
+      err,
+      h("div", { class: "acts" },
+        h("button", { class: "btn alt", type: "button", onclick: function () { rform = null; render(); } }, "Cancel"),
+        del,
+        h("button", { class: "btn", type: "button", onclick: function () {
+          var amt = parseFloat(String(f.amount).replace(/\s/g, "").replace(",", "."));
+          if (!isFinite(amt) || amt <= 0) return fail("Enter the total as a number, like 23.40.");
+          if (amt > 1000000) return fail("That amount looks too large.");
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(f.date)) return fail("Pick a date.");
+          var shop = addShopName(f.shop);
+          if (!shop) return fail("Add the shop name.");
+          var rec = { id: f.id || uid(), date: f.date, shop: shop, amount: Math.round(amt * 100) / 100 };
+          if (f.note.trim()) rec.note = f.note.trim().slice(0, 80);
+          if (f.id) state.receipts = state.receipts.map(function (r) { return r.id === f.id ? rec : r; });
+          else state.receipts.push(rec);
+          rmonth = monthKey(rec.date);
+          rform = null;
+          save(); render();
+        } }, "Save")));
+  }
+
+  function renderReceipts() {
+    var box = $("receipts");
+    box.textContent = "";
+    var n = state.receipts.length;
+    $("sub").textContent = n + (n === 1 ? " receipt" : " receipts");
+    if (rform) { box.appendChild(receiptForm()); return; }
+    if (!rmonth) rmonth = todayStr().slice(0, 7);
+    var cur = rmonth, prev = shiftMonth(cur, -1);
+
+    box.appendChild(h("button", { class: "btn newbtn", type: "button", onclick: function () {
+      var d = todayStr();
+      if (monthKey(d) !== rmonth) d = rmonth + "-" + p2(Math.min(28, new Date().getDate()));
+      rform = { id: null, date: d, shop: "", amount: "", note: "" };
+      render();
+      setTimeout(function () { var a = $("rcAmt"); if (a) a.focus(); }, 0);
+    } }, "Add receipt"));
+
+    box.appendChild(h("div", { class: "rnav" },
+      h("button", { class: "btn alt", type: "button", "aria-label": "Previous month", onclick: function () { rmonth = prev; render(); } }, "‹"),
+      h("strong", null, monthName(cur)),
+      h("button", { class: "btn alt", type: "button", "aria-label": "Next month", onclick: function () { rmonth = shiftMonth(cur, 1); render(); } }, "›")));
+
+    var list = state.receipts.filter(function (r) { return monthKey(r.date) === cur; })
+      .sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
+    var total = list.reduce(function (t, r) { return t + r.amount; }, 0);
+    var ptotal = monthTotal(prev);
+
+    var sum = h("div", { class: "rcard" }, h("h3", null, "Spent this month"), h("div", { class: "rbig" }, money(total)));
+    var line = list.length ? list.length + (list.length === 1 ? " receipt" : " receipts") + " · average " + money(total / list.length) : "No receipts this month";
+    sum.appendChild(h("div", { class: "rsmall" }, line));
+    if (ptotal > 0 && list.length) {
+      var diff = total - ptotal, pct = Math.round(Math.abs(diff) / ptotal * 100);
+      sum.appendChild(h("div", { class: "rsmall" }, (diff === 0 ? "Same as " : (diff > 0 ? "Up " : "Down ") + pct + "% from ") + monthName(prev, true) + " (" + money(ptotal) + ")"));
+    }
+    box.appendChild(sum);
+
+    if (list.length) {
+      var by = {};
+      list.forEach(function (r) { by[r.shop] = (by[r.shop] || 0) + r.amount; });
+      var rows = Object.keys(by).map(function (k) { return { shop: k, amt: by[k] }; }).sort(function (a, b) { return b.amt - a.amt; });
+      var card = h("div", { class: "rcard" }, h("h3", null, "By shop"));
+      rows.forEach(function (r, i) {
+        var share = total ? Math.round(r.amt / total * 100) : 0;
+        card.appendChild(h("div", { class: "sbar" },
+          h("div", { class: "l" }, h("span", null, r.shop), h("span", null, money(r.amt) + " · " + share + "%")),
+          h("div", { class: "t" }, h("i", { cc: COLORS[i % (COLORS.length - 1)], style: "width:" + Math.max(2, r.amt / rows[0].amt * 100) + "%" }))));
+      });
+      box.appendChild(card);
+    }
+
+    var keys = [];
+    for (var i = 5; i >= 0; i--) keys.push(shiftMonth(cur, -i));
+    var vals = keys.map(monthTotal), mx = Math.max.apply(null, vals.concat([1]));
+    if (vals.some(function (v) { return v > 0; })) {
+      var tr = h("div", { class: "trend" });
+      keys.forEach(function (k, idx) {
+        tr.appendChild(h("button", { type: "button", "aria-pressed": k === cur ? "true" : "false", "aria-label": monthName(k) + " " + money(vals[idx]),
+          onclick: function () { rmonth = k; render(); } },
+          h("i", { style: "height:" + (vals[idx] ? Math.max(4, vals[idx] / mx * 84) : 3) + "px" }), monthName(k, true)));
+      });
+      box.appendChild(h("div", { class: "rcard" }, h("h3", null, "Last 6 months"), tr));
+    }
+
+    if (list.length) {
+      var lc = h("div", { class: "rcard" }, h("h3", null, "Receipts"));
+      list.forEach(function (r) {
+        lc.appendChild(h("button", { class: "rrow", type: "button", "aria-label": "Edit receipt from " + r.shop, onclick: function () {
+          rform = { id: r.id, date: r.date, shop: r.shop, amount: String(r.amount), note: r.note || "" };
+          render();
+        } }, h("span", { class: "m" }, h("strong", null, r.shop), h("span", null, dayLabel(r.date) + (r.note ? " · " + r.note : ""))), h("span", { class: "a" }, money(r.amount))));
+      });
+      box.appendChild(lc);
+    } else {
+      box.appendChild(h("div", { class: "empty" }, h("strong", null, "No receipts in " + monthName(cur)), "Tap Add receipt after your next shop to start tracking."));
+    }
+    box.appendChild(h("div", { class: "filters" },
+      h("button", { class: "fchip edit", type: "button", onclick: function () { settings = "shops"; render(); } }, "Manage shops")));
+  }
+
   function renderRecipes() {
     if (rfilter !== "all" && !rcat(rfilter)) rfilter = "all";
     var n = state.recipes.length;
@@ -1700,7 +2056,7 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
       return;
     }
     box.appendChild(h("button", { class: "btn newbtn", type: "button", onclick: function () {
-      editing = { id: null, name: "", text: "", rc: rfilter !== "all" ? rfilter : "", steps: "", img: "", origImg: "", cats: {} };
+      editing = { id: null, name: "", text: "", rcs: rfilter !== "all" ? [rfilter] : [], steps: "", img: "", origImg: "", cats: {}, alts: {} };
       render();
     } }, "New recipe"));
     var fr = h("div", { class: "filters" });
@@ -1709,16 +2065,28 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
         color ? h("span", { class: "dot", cc: color }) : null, label);
     }
     fr.appendChild(fchip("All", "all", null));
-    state.rcats.forEach(function (c) { fr.appendChild(fchip(c.name, c.id, c.color)); });
+    sortedRcats().forEach(function (c) { fr.appendChild(fchip(c.name, c.id, c.color)); });
     fr.appendChild(h("button", { class: "fchip edit", type: "button", onclick: function () { settings = "rcats"; render(); } }, "Edit categories"));
     box.appendChild(fr);
-    var shown = state.recipes.filter(function (r) { return rfilter === "all" || r.rc === rfilter; });
+    var shown = state.recipes.filter(function (r) { return rfilter === "all" || rcsOf(r).indexOf(rfilter) !== -1; }).sort(byName);
     if (!shown.length) {
       box.appendChild(h("div", { class: "empty" },
         h("strong", null, n ? "Nothing in this category" : "No recipes yet"),
         n ? "Tap All to see every recipe, or save a new one here." : "Save a recipe, then send its ingredients to your list in one tap."));
     }
-    shown.forEach(function (r) { box.appendChild(recipeEl(r)); });
+    if (rfilter === "all") {
+      var groups = sortedRcats().map(function (c) { return { name: c.name, color: c.color, list: shown.filter(function (r) { return rcsOf(r).indexOf(c.id) !== -1; }) }; });
+      groups.push({ name: "No category", color: "gray", list: shown.filter(function (r) { return !rcsOf(r).length; }) });
+      groups.forEach(function (g) {
+        if (!g.list.length) return;
+        var sec = h("section", { class: "section" },
+          h("h2", null, h("span", { class: "lbl" }, h("span", { class: "dot", cc: g.color }), g.name), h("span", null, String(g.list.length))));
+        g.list.forEach(function (r) { sec.appendChild(recipeEl(r)); });
+        box.appendChild(sec);
+      });
+    } else {
+      shown.forEach(function (r) { box.appendChild(recipeEl(r)); });
+    }
   }
 
   var TICK ='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg>';
@@ -1786,7 +2154,9 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
   }
 
   /* Redraws keep the page exactly where it was, so a quick second tap never makes the screen jump */
+  var wasEditing = false;
   function render() {
+    if (!!editing !== wasEditing) { sugEdit = false; wasEditing = !!editing; }
     var y = window.pageYOffset || 0;
     var de = document.documentElement;
     document.body.style.minHeight = Math.max(de.scrollHeight, y + window.innerHeight) + "px";
@@ -1796,29 +2166,32 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
   }
   function draw() {
     fillAisleSelect();
-    var onList = tab === "list";
+    var onList = tab === "list", onRec = tab === "recipes", onRcp = tab === "receipts";
     var panelOn = !!settings;
     var cookOn = !!cooking;
     $("tabList").setAttribute("aria-selected", onList ? "true" : "false");
-    $("tabRecipes").setAttribute("aria-selected", onList ? "false" : "true");
-    $("bar").hidden = !!editing && !onList && !panelOn && !cookOn;
+    $("tabRecipes").setAttribute("aria-selected", onRec ? "true" : "false");
+    $("tabReceipts").setAttribute("aria-selected", onRcp ? "true" : "false");
+    $("bar").hidden = ((!!editing && onRec) || (!!rform && onRcp)) && !panelOn && !cookOn;
     $("tabbar").hidden = cookOn;
     $("cookArea").hidden = !cookOn;
     $("addArea").hidden = panelOn || cookOn || !onList;
-    $("note").hidden = panelOn || cookOn;
+    $("note").hidden = panelOn || cookOn || onRcp;
     $("list").hidden = panelOn || cookOn || !onList;
-    $("recipes").hidden = panelOn || cookOn || onList;
+    $("recipes").hidden = panelOn || cookOn || !onRec;
+    $("receipts").hidden = panelOn || cookOn || !onRcp;
     $("panel").hidden = !panelOn || cookOn;
     $("cook").hidden = !cookOn;
     renderList();
     if (cookOn) renderCook();
     else if (panelOn) renderPanel();
-    else if (!onList) renderRecipes();
+    else if (onRec) renderRecipes();
+    else if (onRcp) renderReceipts();
   }
 
   function renderList() {
-    var todo =state.items.filter(function (i) { return !i.done; });
-    var cart = state.items.filter(function (i) { return i.done; });
+    var todo = state.items.filter(function (i) { return !i.done; }).sort(byName);
+    var cart = state.items.filter(function (i) { return i.done; }).sort(byName);
     $("sub").textContent = todo.length + " to get · " + cart.length + " in cart";
 
     var note = $("note");
@@ -1891,7 +2264,7 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
         chips.appendChild(h("button", { class: "chip delchip", type: "button", "aria-label": "Delete suggestion " + p[0], onclick: function () { hideWord(p[0]); renderChips(); } },
           p[0], h("span", { class: "x", "aria-hidden": "true" }, "×")));
       } else {
-        chips.appendChild(h("button", { class: "chip", type: "button", onclick: function () { addItem(p[0], p[1]); } },
+        chips.appendChild(h("button", { class: "chip", type: "button", onclick: function () { addItem(p[0], p[1]); var ni = $("itemName"); ni.value = ""; ni.blur(); renderChips(); } },
           h("span", { class: "dot", cc: colorOf(p[1]) }), p[0]));
       }
     });
@@ -1959,7 +2332,8 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
       input.value = "";
       sel.value = "other";
       autoCat = true;
-      input.focus();
+      input.blur(); /* close the keyboard after adding */
+      renderChips();
     });
 
     /* Tapping List or Recipes closes whatever is open (settings, edit modes, cooking, the recipe editor) and keeps the changes */
@@ -1975,12 +2349,13 @@ input, select, textarea, .form input[type="text"], .form select, .arow select, .
       if (cooking) { cooking = null; wakeOn = false; setWake(false); }
       tab = t;
       settings = null; confirmCat = null; confirmDel = null; pendingImport = null; backupMsg = null;
-      moveMode = false; delMode = false; sugEdit = false;
+      moveMode = false; delMode = false; sugEdit = false; rform = null;
       render();
       window.scrollTo(0, 0);
     }
     $("tabList").addEventListener("click", function () { goTab("list"); });
     $("tabRecipes").addEventListener("click", function () { goTab("recipes"); });
+    $("tabReceipts").addEventListener("click", function () { goTab("receipts"); });
 
     $("toastUndo").addEventListener("click", doUndo);
 
